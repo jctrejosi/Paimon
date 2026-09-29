@@ -1,0 +1,23 @@
+# Entorno virtual local (no pertenece a la imagen)
+.venv/
+
+# Metadatos y CI del repo vendorizado de ComfyUI
+ComfyUI/.git/
+ComfyUI/.github/
+ComfyUI/.ci/
+ComfyUI/tests/
+ComfyUI/tests-unit/
+
+# Basura de Python
+ComfyUI/**/__pycache__/
+ComfyUI/**/*.pyc
+
+# Datos pesados: se montan como volúmenes, no se hornean
+ComfyUI/models/
+ComfyUI/input/
+ComfyUI/output/
+ComfyUI/temp/
+ComfyUI/user/
+
+# Logs
+*.log

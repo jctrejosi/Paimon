@@ -1,0 +1,29 @@
+name: paimon-image-generator
+
+services:
+  comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUID: "${PUID:-1001}"
+        PGID: "${PGID:-1001}"
+    image: paimon-comfyui:local
+    container_name: paimon-comfyui
+    # Solo en loopback: ComfyUI no trae autenticación; no exponer a la red.
+    ports:
+      - "127.0.0.1:8188:8188"
+    # Archivos generados/servidos con el UID del usuario del host (evita root-owned).
+    user: "${PUID:-1001}:${PGID:-1001}"
+    environment:
+      HOME: /tmp
+    volumes:
+      # Datos persistentes: no se hornean en la imagen.
+      # temp/ NO se monta: es efímero y ComfyUI lo limpia al arrancar.
+      - ./ComfyUI/models:/app/models
+      - ./ComfyUI/input:/app/input
+      - ./ComfyUI/output:/app/output
+      - ./ComfyUI/custom_nodes:/app/custom_nodes
+      - ./ComfyUI/user:/app/user
+    shm_size: "1gb"
+    restart: unless-stopped

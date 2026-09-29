@@ -1,0 +1,3 @@
+[submodule "image_generator/ComfyUI"]
+	path = image_generator/ComfyUI
+	url = https://github.com/Comfy-Org/ComfyUI.git
