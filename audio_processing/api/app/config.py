@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # Directorio donde se cachean los pesos descargados.
     whisper_model_dir: Path = Path("models")
 
+    # --- Módulos opcionales de preprocesamiento ---------------------------
+    # Token de Hugging Face para modelos gated (p. ej. diarización con pyannote).
+    hf_token: str | None = None
+
     def is_provider_configured(self, name: str) -> bool:
         """Indica si un proveedor tiene lo mínimo para operar."""
         # El motor local no requiere credenciales; los proveedores cloud se

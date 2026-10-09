@@ -16,8 +16,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY api/requirements.txt ./requirements.txt
-RUN pip install -r requirements.txt
+# Dependencias: por defecto la base (transcripción + cadena mínima).
+# Para incluir los módulos opcionales pesados:
+#   docker build --build-arg PIP_EXTRAS=requirements-extras.txt .
+ARG PIP_EXTRAS=requirements.txt
+COPY api/requirements.txt api/requirements-extras.txt ./
+RUN pip install -r "${PIP_EXTRAS}"
 
 # Código de la API (models/ se monta como volumen).
 COPY api/ ./

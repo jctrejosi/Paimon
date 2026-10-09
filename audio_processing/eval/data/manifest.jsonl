@@ -1,0 +1,24 @@
+{"audio": "s01_clean.wav", "text": "Hola, ¿me puedes decir a qué hora abre la tienda mañana?", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 4.597}
+{"audio": "s01_snr15.wav", "text": "Hola, ¿me puedes decir a qué hora abre la tienda mañana?", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 4.597}
+{"audio": "s01_snr5.wav", "text": "Hola, ¿me puedes decir a qué hora abre la tienda mañana?", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 4.597}
+{"audio": "s02_clean.wav", "text": "Necesito confirmar la reserva para dos personas el viernes por la noche.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 5.95}
+{"audio": "s02_snr15.wav", "text": "Necesito confirmar la reserva para dos personas el viernes por la noche.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 5.95}
+{"audio": "s02_snr5.wav", "text": "Necesito confirmar la reserva para dos personas el viernes por la noche.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 5.95}
+{"audio": "s03_clean.wav", "text": "El paquete llegó ayer pero la caja estaba un poco dañada.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 5.063}
+{"audio": "s03_snr15.wav", "text": "El paquete llegó ayer pero la caja estaba un poco dañada.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 5.063}
+{"audio": "s03_snr5.wav", "text": "El paquete llegó ayer pero la caja estaba un poco dañada.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 5.063}
+{"audio": "s04_clean.wav", "text": "Recuerda enviar el informe antes de las cinco de la tarde.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 4.797}
+{"audio": "s04_snr15.wav", "text": "Recuerda enviar el informe antes de las cinco de la tarde.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 4.797}
+{"audio": "s04_snr5.wav", "text": "Recuerda enviar el informe antes de las cinco de la tarde.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 4.797}
+{"audio": "s05_clean.wav", "text": "No entiendo muy bien cómo funciona este nuevo sistema de facturación.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 6.008}
+{"audio": "s05_snr15.wav", "text": "No entiendo muy bien cómo funciona este nuevo sistema de facturación.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 6.008}
+{"audio": "s05_snr5.wav", "text": "No entiendo muy bien cómo funciona este nuevo sistema de facturación.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 6.008}
+{"audio": "s06_clean.wav", "text": "¿Podrías repetir la dirección completa, por favor?", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 4.516}
+{"audio": "s06_snr15.wav", "text": "¿Podrías repetir la dirección completa, por favor?", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 4.516}
+{"audio": "s06_snr5.wav", "text": "¿Podrías repetir la dirección completa, por favor?", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 4.516}
+{"audio": "s07_clean.wav", "text": "Estuvimos hablando con el técnico y nos explicó el problema con detalle.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 5.972}
+{"audio": "s07_snr15.wav", "text": "Estuvimos hablando con el técnico y nos explicó el problema con detalle.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 5.972}
+{"audio": "s07_snr5.wav", "text": "Estuvimos hablando con el técnico y nos explicó el problema con detalle.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 5.972}
+{"audio": "s08_clean.wav", "text": "Mañana tenemos una reunión importante con el equipo de desarrollo.", "condition": "clean", "snr_db": null, "sample_rate": 22050, "duration": 5.381}
+{"audio": "s08_snr15.wav", "text": "Mañana tenemos una reunión importante con el equipo de desarrollo.", "condition": "snr15", "snr_db": 15.0, "sample_rate": 22050, "duration": 5.381}
+{"audio": "s08_snr5.wav", "text": "Mañana tenemos una reunión importante con el equipo de desarrollo.", "condition": "snr5", "snr_db": 5.0, "sample_rate": 22050, "duration": 5.381}

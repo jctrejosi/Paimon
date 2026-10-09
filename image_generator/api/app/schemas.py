@@ -31,6 +31,25 @@ class GenerateRequest(BaseModel):
     response_format: ResponseFormat = Field(
         default="url", description="'url' (archivo servido por la API) o 'b64_json' inline."
     )
+    # --- image-to-image / edición ---
+    image: str | None = Field(
+        default=None,
+        description="Imagen inicial en base64 o data URL (activa image-to-image/edición).",
+    )
+    mask: str | None = Field(
+        default=None,
+        description="Máscara en base64 o data URL; la zona blanca es la que se rehace.",
+    )
+    strength: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Grado de transformación de la imagen inicial (img2img); 0 = idéntica.",
+    )
+    # --- jobs asíncronos ---
+    webhook_url: str | None = Field(
+        default=None, description="URL a la que se notifica el resultado al terminar (solo /jobs)."
+    )
     extra: dict[str, Any] = Field(
         default_factory=dict, description="Parámetros específicos del proveedor (escape hatch)."
     )
@@ -57,6 +76,7 @@ class ProviderInfo(BaseModel):
     name: str
     configured: bool
     default: bool = False
+    supports_img2img: bool = False
     model: str | None = None
 
 
@@ -69,3 +89,27 @@ class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     default_provider: str
     configured_providers: list[str]
+
+
+# --- Jobs asíncronos ------------------------------------------------------
+JobStatus = Literal["queued", "running", "succeeded", "failed", "canceled"]
+
+
+class JobCreated(BaseModel):
+    id: str
+    status: JobStatus
+    provider: str
+
+
+class Job(BaseModel):
+    id: str
+    status: JobStatus
+    provider: str
+    created_at: float
+    updated_at: float
+    heartbeat_at: float | None = None
+    request: GenerateRequest
+    result: GenerateResponse | None = None
+    error: str | None = None
+    webhook_url: str | None = None
+    webhook_delivered: bool | None = None

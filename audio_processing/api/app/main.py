@@ -1,24 +1,28 @@
-"""API HTTP de transcripción de audio de Paimon.
+"""API HTTP de transcripción y preprocesamiento de audio de Paimon.
 
-Expone una interfaz estable y agnóstica al backend: recibe un archivo de audio ya
-descargado y devuelve la transcripción en texto. El proveedor (hoy solo el local)
-se elige por petición o por configuración. El bot de WhatsApp es otra herramienta
-y no se implementa aquí.
+Recibe un archivo de audio ya descargado, lo puede limpiar con el pipeline de
+preprocesamiento modular y devuelve la transcripción en texto. El bot de
+WhatsApp es otra herramienta y no se implementa aquí.
 """
 
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from .audio import ALLOWED_EXTENSIONS, extension_of, max_bytes
+from .audio import encode_wav
 from .config import get_settings
+from .deps import decode_upload, require_token, validate_audio
+from .preprocessing.api import router as preprocessing_router
+from .preprocessing.base import ProcessorError
+from .preprocessing.pipeline import Pipeline
 from .providers.base import ProviderError, TranscriptResult
 from .providers.registry import PROVIDER_CLASSES, ProviderManager
 from .schemas import (
@@ -42,20 +46,13 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Paimon Audio Processing",
-    version="0.1.0",
-    description="Transcripción de audio (voz→texto) con motor local.",
+    version="0.2.0",
+    description="Transcripción local (voz→texto) y preprocesamiento modular de audio.",
     lifespan=lifespan,
 )
 
-
-def require_token(authorization: str | None = Header(default=None)) -> None:
-    """Exige `Authorization: Bearer <token>` cuando hay token configurado."""
-    expected = settings.audio_api_token
-    if not expected:
-        return
-    scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or token != expected:
-        raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
+# API propia de cada módulo de preprocesamiento (/processors, /preprocess, ...).
+app.include_router(preprocessing_router)
 
 
 @app.exception_handler(ProviderError)
@@ -63,6 +60,14 @@ async def provider_error_handler(_: Request, exc: ProviderError) -> JSONResponse
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": str(exc), "provider": exc.provider},
+    )
+
+
+@app.exception_handler(ProcessorError)
+async def processor_error_handler(_: Request, exc: ProcessorError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(exc), "processor": exc.processor},
     )
 
 
@@ -80,27 +85,13 @@ def resolve_language(language: str | None) -> str | None:
     return language
 
 
-def validate_audio(content: bytes, filename: str | None) -> None:
-    """Valida el archivo subido; lanza HTTPException si no es aceptable."""
-    if not content:
-        raise HTTPException(status_code=400, detail="El archivo de audio está vacío.")
-    limit = max_bytes(settings.audio_max_upload_mb)
-    if len(content) > limit:
-        raise HTTPException(
-            status_code=413,
-            detail=f"El archivo supera el límite de {settings.audio_max_upload_mb} MB.",
-        )
-    ext = extension_of(filename)
-    if ext and ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=415, detail=f"Extensión no soportada: {ext}.")
-
-
-def to_response(result: TranscriptResult) -> TranscribeResponse:
+def to_response(result: TranscriptResult, preprocess: str | None = None) -> TranscribeResponse:
     return TranscribeResponse(
         id=str(uuid.uuid4()),
         provider=result.provider,
         model=result.model,
         created=int(time.time()),
+        preprocess=preprocess,
         text=result.text,
         language=result.language,
         language_probability=result.language_probability,
@@ -120,6 +111,10 @@ async def root() -> dict:
             "providers": "/providers",
             "transcribe": "POST /transcribe",
             "openai_compatible": "POST /v1/audio/transcriptions",
+            "processors": "/processors",
+            "presets": "/presets",
+            "pipeline": "POST /preprocess",
+            "module": "POST /preprocess/{modulo}",
         },
     }
 
@@ -160,9 +155,22 @@ async def transcribe(
     model: Annotated[str | None, Form(description="Modelo específico del proveedor.")] = None,
     provider: Annotated[str | None, Form(description="Proveedor a usar.")] = None,
     verbose: Annotated[bool, Form(description="Incluir segmentos con tiempos.")] = False,
+    preprocess: Annotated[
+        str, Form(description="Preset de limpieza ('minimal', 'clean', 'noisy') o 'none'.")
+    ] = "",
 ) -> TranscribeResponse:
     content = await file.read()
     validate_audio(content, file.filename)
+
+    preset = (preprocess or "").strip()
+    applied = preset if preset and preset.lower() != "none" else None
+    if applied:
+        clip = decode_upload(content)
+        pipeline = Pipeline.from_spec(applied, settings)
+        cleaned = await asyncio.to_thread(pipeline.apply, clip)
+        if not cleaned.clips:
+            raise HTTPException(status_code=400, detail="El preprocesamiento no produjo audio.")
+        content = encode_wav(cleaned.clips[0])
 
     request = TranscribeRequest(
         data=content,
@@ -174,7 +182,7 @@ async def transcribe(
     )
     backend = manager.get(provider or settings.audio_provider)
     result = await backend.transcribe(request)
-    return to_response(result)
+    return to_response(result, preprocess=applied)
 
 
 @app.post("/v1/audio/transcriptions", dependencies=[Depends(require_token)])

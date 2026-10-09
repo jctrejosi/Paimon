@@ -1,0 +1,14 @@
+-r requirements.txt
+
+# Módulos opcionales de preprocesamiento (pesados; algunos requieren torch).
+# Instalar solo si se van a usar:
+#   - denoise backend "deepfilternet"
+deepfilternet
+#   - normalize mode "lufs"
+pyloudnorm
+#   - dereverb (WPE)
+nara_wpe
+#   - diarize (modelos gated: requiere HF_TOKEN)
+pyannote.audio
+#   - separate (Demucs)
+demucs

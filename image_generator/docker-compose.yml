@@ -1,5 +1,33 @@
 name: paimon-image-generator
 
+# Entorno común a la API y al worker.
+x-api-env: &api-env
+  IMAGE_PROVIDER: "${IMAGE_PROVIDER:-comfyui}"
+  # Dentro de la red de compose, ComfyUI se alcanza por su nombre de servicio.
+  COMFYUI_URL: "http://comfyui:8188"
+  COMFYUI_CHECKPOINT: "${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly.safetensors}"
+  IMAGE_API_TOKEN: "${IMAGE_API_TOKEN:-}"
+  PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+  # Estado y cola compartidos en Redis.
+  JOB_STORE: "${JOB_STORE:-redis}"
+  REDIS_URL: "redis://redis:6379/0"
+  JOB_CONCURRENCY: "${JOB_CONCURRENCY:-1}"
+  JOBS_MAX: "${JOBS_MAX:-100}"
+  MAX_REQUEST_BYTES: "${MAX_REQUEST_BYTES:-33554432}"
+  MAX_IMAGE_BYTES: "${MAX_IMAGE_BYTES:-20971520}"
+  METRICS_ENABLED: "${METRICS_ENABLED:-true}"
+  METRICS_PORT: "${METRICS_PORT:-9100}"
+  OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+  OPENAI_IMAGE_MODEL: "${OPENAI_IMAGE_MODEL:-gpt-image-1}"
+  STABILITY_API_KEY: "${STABILITY_API_KEY:-}"
+  STABILITY_IMAGE_MODEL: "${STABILITY_IMAGE_MODEL:-core}"
+  REPLICATE_API_TOKEN: "${REPLICATE_API_TOKEN:-}"
+  REPLICATE_MODEL: "${REPLICATE_MODEL:-black-forest-labs/flux-schnell}"
+  FAL_KEY: "${FAL_KEY:-}"
+  FAL_MODEL: "${FAL_MODEL:-fal-ai/flux/schnell}"
+  BFL_API_KEY: "${BFL_API_KEY:-}"
+  BFL_MODEL: "${BFL_MODEL:-flux-schnell}"
+
 services:
   comfyui:
     build:
@@ -26,6 +54,34 @@ services:
       - ./ComfyUI/custom_nodes:/app/custom_nodes
       - ./ComfyUI/user:/app/user
     shm_size: "1gb"
+    healthcheck:
+      # ComfyUI tarda en arrancar (carga de nodos/modelos): start_period amplio.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8188/system_stats', timeout=5).status == 200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+
+  # Estado persistente de los jobs, cola de trabajo y pub/sub para SSE.
+  redis:
+    image: redis:7-alpine
+    container_name: paimon-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      # Solo loopback: uso interno de api/worker.
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Fachada HTTP: elige entre ComfyUI local y proveedores externos.
@@ -36,28 +92,59 @@ services:
     image: paimon-image-api:local
     container_name: paimon-image-api
     depends_on:
-      - comfyui
-    # Las claves se leen del .env de la raíz (si existe); los valores por
-    # defecto dejan el servicio arrancable sin configurar ningún externo.
+      comfyui:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      IMAGE_PROVIDER: "${IMAGE_PROVIDER:-comfyui}"
-      # Dentro de la red de compose, ComfyUI se alcanza por su nombre de servicio.
-      COMFYUI_URL: "http://comfyui:8188"
-      COMFYUI_CHECKPOINT: "${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly.safetensors}"
-      IMAGE_API_TOKEN: "${IMAGE_API_TOKEN:-}"
-      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      OPENAI_IMAGE_MODEL: "${OPENAI_IMAGE_MODEL:-gpt-image-1}"
-      STABILITY_API_KEY: "${STABILITY_API_KEY:-}"
-      STABILITY_IMAGE_MODEL: "${STABILITY_IMAGE_MODEL:-core}"
-      REPLICATE_API_TOKEN: "${REPLICATE_API_TOKEN:-}"
-      REPLICATE_MODEL: "${REPLICATE_MODEL:-black-forest-labs/flux-schnell}"
-      FAL_KEY: "${FAL_KEY:-}"
-      FAL_MODEL: "${FAL_MODEL:-fal-ai/flux/schnell}"
-      BFL_API_KEY: "${BFL_API_KEY:-}"
-      BFL_MODEL: "${BFL_MODEL:-flux-schnell}"
+      <<: *api-env
+      # La API solo encola; el worker ejecuta.
+      JOB_EXECUTION: "${JOB_EXECUTION:-worker}"
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./api/outputs:/data/outputs
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
+
+  # Ejecuta los jobs consumiendo la cola de Redis. Escala con `--scale worker=N`.
+  worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: paimon-image-api:local
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      comfyui:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *api-env
+    ports:
+      # Métricas del worker (Prometheus).
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - ./api/outputs:/data/outputs
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9100/metrics', timeout=5).status == 200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  redis-data:

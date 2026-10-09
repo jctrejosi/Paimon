@@ -32,6 +32,7 @@ class TranscribeResponse(BaseModel):
     provider: str
     model: str | None = None
     created: int
+    preprocess: str | None = None
     text: str
     language: str | None = None
     language_probability: float | None = None

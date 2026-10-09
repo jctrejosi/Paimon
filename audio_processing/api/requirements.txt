@@ -10,3 +10,8 @@ faster-whisper
 # av>=16 ya no acepta (provoca TypeError al decodificar). Fijamos av<16 hasta
 # que faster-whisper lo soporte.
 av<16
+
+# Preprocesamiento: cadena mínima (I/O, resample, filtros, análisis, denoise).
+numpy
+scipy
+soxr

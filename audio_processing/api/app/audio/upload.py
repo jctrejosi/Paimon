@@ -1,10 +1,9 @@
-"""Utilidades de validación de archivos de audio."""
+"""Validación de archivos de audio subidos."""
 
 from __future__ import annotations
 
-# Formatos que decodifica el motor local (PyAV/ffmpeg). No es una lista
-# exhaustiva: si falta una extensión pero el contenido es decodificable,
-# basta con añadirla aquí.
+# Formatos que decodifica ffmpeg/PyAV. No es exhaustivo: si falta una extensión
+# pero el contenido es decodificable, basta con añadirla aquí.
 ALLOWED_EXTENSIONS = frozenset(
     {
         ".wav",

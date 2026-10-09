@@ -1,8 +1,15 @@
 """Proveedor local basado en ComfyUI (API HTTP nativa).
 
-Flujo: se toma una plantilla de workflow en formato "API" de ComfyUI, se
-inyectan los parámetros, se encola con `POST /prompt`, se espera el resultado
-en `GET /history/{id}` y se descargan los bytes con `GET /view`.
+Soporta tres modos según la petición:
+
+* **txt2img** (sin `image`): plantilla `sd_txt2img.json`.
+* **img2img** (`image`, sin `mask`): plantilla `sd_img2img.json`; `strength`
+  controla el `denoise` del KSampler.
+* **inpainting** (`image` + `mask`): plantilla `sd_inpaint.json`.
+
+Flujo: se inyectan los parámetros en la plantilla, se encola con `POST /prompt`,
+se espera el resultado en `GET /history/{id}` y se descargan los bytes con
+`GET /view`.
 """
 
 from __future__ import annotations
@@ -19,14 +26,18 @@ import httpx
 
 from ..config import Settings
 from ..schemas import GenerateRequest
+from ..storage import extension_for
 from .base import ImageProvider, ProviderError, ProviderResult, RawImage
 
-# Plantilla por defecto incluida en el paquete.
-_DEFAULT_WORKFLOW = Path(__file__).resolve().parents[2] / "workflows" / "sd_txt2img.json"
+_WORKFLOWS_DIR = Path(__file__).resolve().parents[2] / "workflows"
+_TXT2IMG = _WORKFLOWS_DIR / "sd_txt2img.json"
+_IMG2IMG = _WORKFLOWS_DIR / "sd_img2img.json"
+_INPAINT = _WORKFLOWS_DIR / "sd_inpaint.json"
 
 
 class ComfyUIProvider(ImageProvider):
     name = "comfyui"
+    supports_img2img = True
 
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
@@ -34,7 +45,13 @@ class ComfyUIProvider(ImageProvider):
             base_url=settings.comfyui_url.rstrip("/"),
             timeout=settings.comfyui_timeout,
         )
-        self._template = self._load_template(settings)
+        # Un workflow propio (COMFYUI_WORKFLOW) solo sustituye al de txt2img.
+        txt2img_path = Path(settings.comfyui_workflow) if settings.comfyui_workflow else _TXT2IMG
+        self._templates = {
+            "txt2img": self._load_template(txt2img_path),
+            "img2img": self._load_template(_IMG2IMG),
+            "inpaint": self._load_template(_INPAINT),
+        }
 
     @classmethod
     def is_configured(cls, settings: Settings) -> bool:
@@ -46,8 +63,7 @@ class ComfyUIProvider(ImageProvider):
         return settings.comfyui_checkpoint
 
     @staticmethod
-    def _load_template(settings: Settings) -> dict:
-        path = settings.comfyui_workflow or _DEFAULT_WORKFLOW
+    def _load_template(path: Path) -> dict:
         path = Path(path)
         if not path.is_file():
             raise ProviderError(
@@ -66,8 +82,9 @@ class ComfyUIProvider(ImageProvider):
             if isinstance(node, dict) and node.get("class_type") == class_type
         ]
 
-    def _apply_parameters(self, request: GenerateRequest, seed: int) -> dict:
-        workflow = copy.deepcopy(self._template)
+    def _apply_parameters(self, workflow: dict, request: GenerateRequest, seed: int) -> dict:
+        """Aplica los parámetros escalares sobre una copia del grafo."""
+        workflow = copy.deepcopy(workflow)
 
         checkpoint = request.model or self.settings.comfyui_checkpoint
         for node_id in self._node_ids_by_class(workflow, "CheckpointLoaderSimple"):
@@ -92,19 +109,68 @@ class ComfyUIProvider(ImageProvider):
                 inputs["steps"] = request.steps
             if request.guidance_scale is not None:
                 inputs["cfg"] = request.guidance_scale
+            if request.image is not None:
+                # Default: inpainting rehace al 100%; img2img respeta `strength`.
+                default_denoise = 1.0 if request.mask is not None else 0.75
+                inputs["denoise"] = (
+                    request.strength if request.strength is not None else default_denoise
+                )
 
         for node_id in self._node_ids_by_class(workflow, "SaveImage"):
             workflow[node_id]["inputs"]["filename_prefix"] = "paimon"
 
         return workflow
 
+    async def _upload_image(self, decoded) -> str:
+        """Sube una imagen a ComfyUI y devuelve el nombre con el que referenciarla."""
+        ext = extension_for(decoded.mime_type)
+        filename = f"paimon-{uuid.uuid4().hex}.{ext}"
+        files = {"image": (filename, decoded.data, decoded.mime_type)}
+        data = {"overwrite": "true", "type": "input"}
+        try:
+            resp = await self._client.post("/upload/image", files=files, data=data)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise ProviderError(
+                f"No se pudo subir la imagen a ComfyUI: {exc}", provider=self.name
+            ) from exc
+        payload = resp.json()
+        name = payload["name"]
+        subfolder = payload.get("subfolder") or ""
+        return f"{subfolder}/{name}" if subfolder else name
+
+    async def _build_workflow(self, request: GenerateRequest, seed: int) -> tuple[dict, str]:
+        if request.image is not None and request.mask is not None:
+            mode = "inpaint"
+        elif request.image is not None:
+            mode = "img2img"
+        else:
+            mode = "txt2img"
+
+        workflow = self._templates[mode]
+        if request.image is not None:
+            input_nodes = self._node_ids_by_class(workflow, "LoadImage")
+            image_name = await self._upload_image(self.decode_image_field(request.image))
+            # La plantilla de inpaint tiene dos LoadImage: imagen y máscara.
+            reference = copy.deepcopy(workflow)
+            reference[input_nodes[0]]["inputs"]["image"] = image_name
+            if request.mask is not None and len(input_nodes) > 1:
+                mask_name = await self._upload_image(self.decode_image_field(request.mask))
+                reference[input_nodes[1]]["inputs"]["image"] = mask_name
+            workflow = reference
+
+        return self._apply_parameters(workflow, request, seed), mode
+
     # --- ejecución --------------------------------------------------------
     async def generate(self, request: GenerateRequest) -> ProviderResult:
-        seed = request.seed if request.seed is not None else int.from_bytes(
-            uuid.uuid4().bytes[:4], "big"
+        self.ensure_img2img(request)
+        seed = (
+            request.seed
+            if request.seed is not None
+            else int.from_bytes(uuid.uuid4().bytes[:4], "big")
         )
         client_id = str(uuid.uuid4())
-        workflow = self._apply_parameters(request, seed)
+        workflow, mode = await self._build_workflow(request, seed)
 
         try:
             resp = await self._client.post(
@@ -135,7 +201,7 @@ class ComfyUIProvider(ImageProvider):
             provider=self.name,
             model=request.model or self.settings.comfyui_checkpoint,
             images=images,
-            metadata={"prompt_id": prompt_id, "client_id": client_id},
+            metadata={"prompt_id": prompt_id, "client_id": client_id, "mode": mode},
         )
 
     async def _wait_for_result(self, prompt_id: str) -> dict:

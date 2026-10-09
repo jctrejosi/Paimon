@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from ..config import Settings
+from ..images import DecodedImage, ImageTooLarge, decode_image
 from ..schemas import GenerateRequest
 
 
@@ -54,6 +55,8 @@ class ImageProvider(ABC):
     """
 
     name: ClassVar[str]
+    # ¿Sabe usar una imagen de entrada (image-to-image / edición)?
+    supports_img2img: ClassVar[bool] = False
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -67,6 +70,28 @@ class ImageProvider(ABC):
     def default_model(cls, settings: Settings) -> str | None:
         """Modelo por defecto del proveedor (para informar en /providers)."""
         return None
+
+    def decode_image_field(self, value: str) -> DecodedImage:
+        """Decodifica una imagen de entrada, mapeando errores a ProviderError."""
+        try:
+            return decode_image(value, max_bytes=self.settings.max_image_bytes)
+        except ImageTooLarge as exc:
+            raise ProviderError(
+                f"Imagen de entrada inválida: {exc}", provider=self.name, status_code=413
+            ) from exc
+        except ValueError as exc:
+            raise ProviderError(
+                f"Imagen de entrada inválida: {exc}", provider=self.name, status_code=400
+            ) from exc
+
+    def ensure_img2img(self, request: GenerateRequest) -> None:
+        """Rechaza con claridad si el proveedor no soporta edición."""
+        if request.image is not None and not self.supports_img2img:
+            raise ProviderError(
+                f"El proveedor '{self.name}' no soporta image-to-image/edición.",
+                provider=self.name,
+                status_code=400,
+            )
 
     @abstractmethod
     async def generate(self, request: GenerateRequest) -> ProviderResult:

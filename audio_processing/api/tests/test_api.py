@@ -106,3 +106,21 @@ def test_openai_invalid_format(client: TestClient) -> None:
         data={"response_format": "srt"},
     )
     assert resp.status_code == 400
+
+
+def test_transcribe_with_preprocess(client: TestClient, wav: bytes) -> None:
+    resp = client.post(
+        "/transcribe",
+        files={"file": ("a.wav", wav, "audio/wav")},
+        data={"preprocess": "minimal"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["preprocess"] == "minimal"
+    assert body["text"] == "hola mundo"
+
+
+def test_transcribe_without_preprocess(client: TestClient) -> None:
+    resp = client.post("/transcribe", files=_audio(), data={"preprocess": "none"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["preprocess"] is None

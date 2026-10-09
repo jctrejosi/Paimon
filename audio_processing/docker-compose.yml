@@ -24,6 +24,8 @@ services:
       LOCAL_WHISPER_MODEL: "${LOCAL_WHISPER_MODEL:-base}"
       AUDIO_DEFAULT_LANGUAGE: "${AUDIO_DEFAULT_LANGUAGE:-es}"
       AUDIO_API_TOKEN: "${AUDIO_API_TOKEN:-}"
+      # Token de Hugging Face (necesario solo para diarización con pyannote).
+      HF_TOKEN: "${HF_TOKEN:-}"
     volumes:
       # Pesos del modelo (volumen de datos, no se hornean).
       - ./api/models:/models

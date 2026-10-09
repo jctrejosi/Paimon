@@ -1,0 +1,18 @@
+{"audio": "real01_clean.wav", "text": "HE WAS IN A FEVERED STATE OF MIND OWING TO THE BLIGHT HIS WIFE'S ACTION THREATENED TO CAST UPON HIS ENTIRE FUTURE", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 6.59}
+{"audio": "real01_snr15.wav", "text": "HE WAS IN A FEVERED STATE OF MIND OWING TO THE BLIGHT HIS WIFE'S ACTION THREATENED TO CAST UPON HIS ENTIRE FUTURE", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 6.59}
+{"audio": "real01_snr5.wav", "text": "HE WAS IN A FEVERED STATE OF MIND OWING TO THE BLIGHT HIS WIFE'S ACTION THREATENED TO CAST UPON HIS ENTIRE FUTURE", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 6.59}
+{"audio": "real02_clean.wav", "text": "HE WOULD HAVE TO PAY HER THE MONEY WHICH SHE WOULD NOW REGULARLY DEMAND OR THERE WOULD BE TROUBLE IT DID NOT MATTER WHAT HE DID", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 7.145}
+{"audio": "real02_snr15.wav", "text": "HE WOULD HAVE TO PAY HER THE MONEY WHICH SHE WOULD NOW REGULARLY DEMAND OR THERE WOULD BE TROUBLE IT DID NOT MATTER WHAT HE DID", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 7.145}
+{"audio": "real02_snr5.wav", "text": "HE WOULD HAVE TO PAY HER THE MONEY WHICH SHE WOULD NOW REGULARLY DEMAND OR THERE WOULD BE TROUBLE IT DID NOT MATTER WHAT HE DID", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 7.145}
+{"audio": "real03_clean.wav", "text": "HURSTWOOD WALKED THE FLOOR MENTALLY ARRANGING THE CHIEF POINTS OF HIS SITUATION", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 4.835}
+{"audio": "real03_snr15.wav", "text": "HURSTWOOD WALKED THE FLOOR MENTALLY ARRANGING THE CHIEF POINTS OF HIS SITUATION", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 4.835}
+{"audio": "real03_snr5.wav", "text": "HURSTWOOD WALKED THE FLOOR MENTALLY ARRANGING THE CHIEF POINTS OF HIS SITUATION", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 4.835}
+{"audio": "real04_clean.wav", "text": "HE ALSO THOUGHT OF HIS MANAGERIAL POSITION", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 2.84}
+{"audio": "real04_snr15.wav", "text": "HE ALSO THOUGHT OF HIS MANAGERIAL POSITION", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 2.84}
+{"audio": "real04_snr5.wav", "text": "HE ALSO THOUGHT OF HIS MANAGERIAL POSITION", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 2.84}
+{"audio": "real05_clean.wav", "text": "HOW WOULD THE PAPERS TALK ABOUT IT", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 1.955}
+{"audio": "real05_snr15.wav", "text": "HOW WOULD THE PAPERS TALK ABOUT IT", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 1.955}
+{"audio": "real05_snr5.wav", "text": "HOW WOULD THE PAPERS TALK ABOUT IT", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 1.955}
+{"audio": "real06_clean.wav", "text": "MANY LITTLE WRINKLES GATHERED BETWEEN HIS EYES AS HE CONTEMPLATED THIS AND HIS BROW MOISTENED", "condition": "clean", "snr_db": null, "sample_rate": 16000, "duration": 5.6}
+{"audio": "real06_snr15.wav", "text": "MANY LITTLE WRINKLES GATHERED BETWEEN HIS EYES AS HE CONTEMPLATED THIS AND HIS BROW MOISTENED", "condition": "snr15", "snr_db": 15.0, "sample_rate": 16000, "duration": 5.6}
+{"audio": "real06_snr5.wav", "text": "MANY LITTLE WRINKLES GATHERED BETWEEN HIS EYES AS HE CONTEMPLATED THIS AND HIS BROW MOISTENED", "condition": "snr5", "snr_db": 5.0, "sample_rate": 16000, "duration": 5.6}
