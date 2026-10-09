@@ -27,3 +27,37 @@ services:
       - ./ComfyUI/user:/app/user
     shm_size: "1gb"
     restart: unless-stopped
+
+  # Fachada HTTP: elige entre ComfyUI local y proveedores externos.
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: paimon-image-api:local
+    container_name: paimon-image-api
+    depends_on:
+      - comfyui
+    # Las claves se leen del .env de la raíz (si existe); los valores por
+    # defecto dejan el servicio arrancable sin configurar ningún externo.
+    environment:
+      IMAGE_PROVIDER: "${IMAGE_PROVIDER:-comfyui}"
+      # Dentro de la red de compose, ComfyUI se alcanza por su nombre de servicio.
+      COMFYUI_URL: "http://comfyui:8188"
+      COMFYUI_CHECKPOINT: "${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly.safetensors}"
+      IMAGE_API_TOKEN: "${IMAGE_API_TOKEN:-}"
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_IMAGE_MODEL: "${OPENAI_IMAGE_MODEL:-gpt-image-1}"
+      STABILITY_API_KEY: "${STABILITY_API_KEY:-}"
+      STABILITY_IMAGE_MODEL: "${STABILITY_IMAGE_MODEL:-core}"
+      REPLICATE_API_TOKEN: "${REPLICATE_API_TOKEN:-}"
+      REPLICATE_MODEL: "${REPLICATE_MODEL:-black-forest-labs/flux-schnell}"
+      FAL_KEY: "${FAL_KEY:-}"
+      FAL_MODEL: "${FAL_MODEL:-fal-ai/flux/schnell}"
+      BFL_API_KEY: "${BFL_API_KEY:-}"
+      BFL_MODEL: "${BFL_MODEL:-flux-schnell}"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./api/outputs:/data/outputs
+    restart: unless-stopped

@@ -1,0 +1,6 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.isort]
+# El paquete de la aplicación es propio, no una dependencia externa.
+known-first-party = ["app"]

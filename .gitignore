@@ -1,5 +1,16 @@
 # Entornos virtuales locales (no versionar)
 .venv/
 
+# Cachés de herramientas
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+
 # Logs
 *.log
+
+# Imágenes generadas por la API (volumen de datos, no versionar)
+image_generator/api/outputs/
+
+# Configuración local de la API (contiene credenciales)
+image_generator/api/.env
