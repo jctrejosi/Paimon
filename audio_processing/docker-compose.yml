@@ -1,0 +1,30 @@
+name: paimon-audio-processing
+
+services:
+  audio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUID: "${PUID:-1001}"
+        PGID: "${PGID:-1001}"
+    image: paimon-audio-processing:local
+    container_name: paimon-audio-processing
+    # Solo en loopback: sin autenticación por defecto; no exponer a la red.
+    ports:
+      - "127.0.0.1:8000:8000"
+    # Archivos/modelos con el UID del usuario del host (evita root-owned).
+    user: "${PUID:-1001}:${PGID:-1001}"
+    environment:
+      HOME: /tmp
+      # Caché de modelos dentro del volumen para no re-descargar.
+      WHISPER_MODEL_DIR: /models
+      HF_HOME: /models/hf
+      AUDIO_PROVIDER: "${AUDIO_PROVIDER:-local}"
+      LOCAL_WHISPER_MODEL: "${LOCAL_WHISPER_MODEL:-base}"
+      AUDIO_DEFAULT_LANGUAGE: "${AUDIO_DEFAULT_LANGUAGE:-es}"
+      AUDIO_API_TOKEN: "${AUDIO_API_TOKEN:-}"
+    volumes:
+      # Pesos del modelo (volumen de datos, no se hornean).
+      - ./api/models:/models
+    restart: unless-stopped

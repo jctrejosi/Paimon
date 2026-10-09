@@ -1,0 +1,12 @@
+# API HTTP
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# Motor local de transcripción (CPU).
+faster-whisper
+# faster-whisper 1.2.x llama a av.open(..., metadata_errors=...), argumento que
+# av>=16 ya no acepta (provoca TypeError al decodificar). Fijamos av<16 hasta
+# que faster-whisper lo soporte.
+av<16

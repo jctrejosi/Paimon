@@ -14,3 +14,10 @@ image_generator/api/outputs/
 
 # Configuración local de la API (contiene credenciales)
 image_generator/api/.env
+
+# Pesos de modelos de transcripción (volumen de datos, no versionar)
+audio_processing/api/models/*
+!audio_processing/api/models/.gitkeep
+
+# Configuración local de la API de transcripción (contiene credenciales)
+audio_processing/api/.env
