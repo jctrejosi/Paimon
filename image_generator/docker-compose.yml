@@ -101,7 +101,9 @@ services:
       # La API solo encola; el worker ejecuta.
       JOB_EXECUTION: "${JOB_EXECUTION:-worker}"
     ports:
-      - "127.0.0.1:8000:8000"
+      # El puerto del host es configurable (dev.js lo ajusta si hay conflicto
+      # con audio_processing, que también usa :8000).
+      - "127.0.0.1:${IMAGE_API_HOST_PORT:-8000}:8000"
     volumes:
       - ./api/outputs:/data/outputs
     healthcheck:

@@ -8,6 +8,7 @@ __pycache__/
 
 # Logs
 *.log
+logs/
 
 # Imágenes generadas por la API (volumen de datos, no versionar)
 image_generator/api/outputs/
