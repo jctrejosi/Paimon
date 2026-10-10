@@ -1,14 +1,29 @@
 -r requirements.txt
 
-# Módulos opcionales de preprocesamiento (pesados; algunos requieren torch).
-# Instalar solo si se van a usar:
-#   - denoise backend "deepfilternet"
-deepfilternet
+# Módulos opcionales de preprocesamiento. Instalar solo si se van a usar.
+
+# --- Ligeros y recomendados ---
+#   - denoise backend "noisereduce" (mejor que el "spectral" propio: ver eval/)
+noisereduce
 #   - normalize mode "lufs"
 pyloudnorm
 #   - dereverb (WPE)
 nara_wpe
-#   - diarize (modelos gated: requiere HF_TOKEN)
+
+# --- Pesados (requieren torch) ---
+#   - diarize backend "ecapa": embeddings ECAPA (speechbrain) + clustering. SIN credenciales.
+#     speechbrain arrastra torch; en CPU-only puede instalarse antes con:
+#     pip install torch --index-url https://download.pytorch.org/whl/cpu
+speechbrain
+scikit-learn
+#   - diarize backend "pyannote": mejor calidad, pero sus modelos son GATED:
+#     hay que aceptar las condiciones en Hugging Face y exportar HF_TOKEN.
 pyannote.audio
 #   - separate (Demucs)
 demucs
+
+# --- Nota: deepfilternet (backend de denoise) ---
+# NO se puede instalar en Python >= 3.12: su dependencia `deepfilterlib` solo
+# publica wheels hasta cp311 (y compilarla requiere Rust/Cargo). Si se usa
+# Python <= 3.11 (o se instala Rust), añadir aquí:
+# deepfilternet

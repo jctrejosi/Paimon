@@ -19,5 +19,13 @@ image_generator/api/.env
 audio_processing/api/models/*
 !audio_processing/api/models/.gitkeep
 
+# Datos generados por la evaluación de WER (reproducibles, no versionar)
+audio_processing/eval/data/
+audio_processing/eval/data_real/
+audio_processing/eval/.cache/
+
+# Caché de modelos descargados por la evaluación (speechbrain, etc.)
+audio_processing/eval/models/
+
 # Configuración local de la API de transcripción (contiene credenciales)
 audio_processing/api/.env

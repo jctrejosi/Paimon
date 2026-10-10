@@ -34,7 +34,7 @@ La recomendación es una **cadena mínima por defecto** y extras opt-in, midiend
 | Análisis de calidad/frecuencia | SNR, clipping, DC, silencio | No extrae texto, pero **decide** si aplicar denoise | **Útil como diagnóstico** |
 | De-reverberación (WPE) | salas con eco | Marginal en notas de voz | Opcional |
 | Separación de fuentes (Demucs) | voz + música simultáneas | Ayuda si hay música fuerte; costoso | Opcional |
-| Diarización (pyannote) | ¿quién habla y cuándo? | **No mejora el texto**; añade etiquetas de hablante | Solo si multi-hablante |
+| Diarización (pyannote / ecapa) | ¿quién habla y cuándo? | **No mejora el texto**; añade etiquetas de hablante | Solo si multi-hablante |
 
 **Conclusiones clave:**
 
@@ -142,7 +142,7 @@ report = pipeline.last_report           # métricas por paso
 | `normalize` | nivel peak/RMS (o LUFS) | clip → clip | `/preprocess/normalize` |
 | `denoise` | reducción de ruido | clip → clip | `/preprocess/denoise` |
 | `vad` | recorte de silencios / troceo | clip → clip o clips | `/preprocess/vad` |
-| `diarize` *(opt-in)* | etiquetas de hablante | clip → segmentos+hablante | `/preprocess/diarize` |
+| `diarize` *(opt-in)* | etiquetas de hablante (backend `ecapa` sin credenciales o `pyannote` gated) | clip → segmentos+hablante | `/preprocess/diarize` |
 | `separate` *(opt-in)* | separar voz de música/otras voces | clip → clips | `/preprocess/separate` |
 
 ## 6. Tecnologías por módulo
@@ -157,11 +157,12 @@ report = pipeline.last_report           # métricas por paso
 | analyze | **numpy + scipy** (FFT para stats, no para procesar) | `librosa` | ligero |
 | denoise | **DeepFilterNet** (ONNX, CPU) | `noisereduce` (spectral gating), **RNNoise** (ffmpeg `arnndn`) | DFN muy bueno en CPU |
 | vad | **Silero VAD** (onnxruntime) | `webrtcvad` | ya usado por faster-whisper |
-| diarize *(opt-in)* | **pyannote.audio** | speechbrain, NeMo | requiere token HF; pesado |
+| diarize *(opt-in)* | **speechbrain ECAPA** (sin credenciales; CPU) | **pyannote.audio** (mejor calidad; gated → `HF_TOKEN`), NeMo | ecapa ligero; pyannote pesado |
 | separate *(opt-in)* | **Demucs** | speechbrain (SepFormer) | pesado; solo si hay música |
 
 Dependencias nuevas previstas: `numpy`, `scipy`, `soxr`, `onnxruntime`, `deepfilternet`,
-`pyloudnorm` (opcional), `pyannote.audio`/`demucs` (opt-in, extras separados).
+`pyloudnorm` (opcional), `speechbrain`+`scikit-learn` (diarize `ecapa`),
+`pyannote.audio`/`demucs` (opt-in, extras separados; pyannote gated).
 
 > Mantener las deps **opt-in** en un `requirements-extras.txt` para que la imagen base
 > (transcripción + cadena mínima) siga siendo ligera.
@@ -230,9 +231,17 @@ audio_processing/api/app/
   - [x] `denoise` con backend `spectral` (propio) y `deepfilternet` (opcional).
   - [x] Preset `noisy`.
 - **Fase D — Opt-in pesados** ✅
-  - [x] `dereverb` (nara_wpe), `diarize` (pyannote), `separate` (Demucs).
-- **Fase E — Evaluación**
-  - [ ] Mini-set de audios con WER antes/después por preset.
+  - [x] `dereverb` (nara_wpe), `diarize`, `separate` (Demucs).
+  - [x] `diarize`: backend `ecapa` (speechbrain, **sin credenciales**: embeddings de
+    hablante + clustering aglomerativo) y backend `pyannote` (mejor calidad, *gated*
+    → `HF_TOKEN`). `backend=auto` prefiere pyannote si está instalado; si no, ecapa.
+    Verificado con `eval/diarize_check.py --backend ecapa`: 2 hablantes detectados y
+    cambio de turno a ≲0.6 s del real, sin credenciales.
+- **Fase E — Evaluación** ✅
+  - [x] Mini-set con WER (voz real de LibriSpeech + voz sintética en español) y
+    variantes declarativas en `eval/variants.json`.
+  - [x] Resultado: `clean` (con VAD) es el mejor preset; el denoise no ayuda por
+    defecto y `noisereduce` > `spectral`. Detalle en `audio_processing/eval/README.md`.
 
 ## 11. Riesgos y consideraciones
 
@@ -240,16 +249,18 @@ audio_processing/api/app/
 |---|---|
 | Sobreprocesar y **empeorar** el WER | Cadena mínima por defecto; denoise tras umbral; medir WER |
 | `denoise`/`separate` caros en CPU | Import perezoso; presets; extras separados |
+| `deepfilternet` no instalable en Python ≥3.12 | `deepfilterlib` solo trae wheels hasta cp311 y requiere Rust; usar `noisereduce` |
+| Diarización bloqueada sin credenciales | Backend `ecapa` (speechbrain) **sin credenciales**; `pyannote` (mejor calidad) sigue siendo *gated* → `HF_TOKEN`. |
 | Orden de pasos incorrecto | Documentar y fijar el orden del pipeline |
 | Resample a 16 kHz del ASR vs. del preproceso | Resample explícito una vez; pasar ndarray al modelo |
-| Licencias de modelos (DFN, pyannote) | Revisar licencias; pyannote requiere token HF |
+| Licencias de modelos (DFN, pyannote, speechbrain) | Revisar licencias; los de pyannote son *gated* (token HF); ECAPA de speechbrain es público. |
 | Audios largos (chunking) | VAD + troceo por segmentos |
 
 ## 12. Preguntas abiertas
 
-1. ¿Implementamos **todo** o priorizamos la cadena mínima (Fases A–B) primero?
-2. ¿Incluimos `denoise` desde el inicio o solo cuando haya audio ruidoso real?
-3. ¿`diarize`/`separate` entran ahora (opt-in) o se posponen?
+1. ¿Implementamos **todo** o priorizamos la cadena mínima (Fases A–B) primero? *(resuelto: se implementó todo)*
+2. ¿Incluimos `denoise` desde el inicio o solo cuando haya audio ruidoso real? *(resuelto: incluido, fuera de los presets por defecto)*
+3. ¿`diarize`/`separate` entran ahora (opt-in) o se posponen? *(resuelto: implementados opt-in; `diarize` con backend `ecapa` sin credenciales)*
 4. ¿Normalización por **peak** (seguro para Whisper) o **LUFS** (más “fiel”)?
-5. ¿Definimos un **mini-set de evaluación** (con WER) antes de fijar presets?
+5. ¿Definimos un **mini-set de evaluación** (con WER) antes de fijar presets? *(resuelto: `eval/` con WER; `clean` es el mejor preset)*
 6. ¿Los pasos opt-in van en la misma imagen (extras) o en un contenedor aparte?

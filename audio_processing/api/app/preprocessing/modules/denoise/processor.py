@@ -3,7 +3,10 @@
 Backends:
 - `spectral` (por defecto, sin dependencias extra): sustracción espectral con
   estimación del perfil de ruido a partir de las tramas de menor energía.
-- `deepfilternet` (opcional): red neuronal de mejora de voz (requiere `deepfilternet`).
+- `noisereduce` (opcional): implementación madura de *spectral gating*.
+- `deepfilternet` (opcional): red neuronal de mejora de voz. Requiere
+  `deepfilternet`, que a su vez necesita `deepfilterlib` (solo hay wheels hasta
+  Python 3.11 o compilar con Rust).
 """
 
 from __future__ import annotations
@@ -29,17 +32,23 @@ _DFN_RATE = 48000
 
 
 class DenoiseParams(BaseModel):
-    backend: Literal["spectral", "deepfilternet"] = "spectral"
+    backend: Literal["auto", "spectral", "noisereduce", "deepfilternet"] = Field(
+        default="auto",
+        description="'auto' usa el mejor backend instalado (noisereduce > spectral).",
+    )
     strength: float = Field(default=1.0, ge=0.0, le=1.0, description="Cuánto ruido se resta.")
     n_fft: int = Field(default=1024, ge=128, le=8192)
     noise_percentile: float = Field(
         default=20.0, ge=1.0, le=50.0, description="Percentil de tramas más silenciosas."
     )
+    stationary: bool = Field(
+        default=True, description="(backend noisereduce) Asumir ruido estacionario."
+    )
 
 
 class DenoiseProcessor(Processor):
     name = "denoise"
-    description = "Reduce ruido de fondo (sustracción espectral o DeepFilterNet)."
+    description = "Reduce ruido de fondo (sustracción espectral, noisereduce o DeepFilterNet)."
     params_model = DenoiseParams
 
     def __init__(self, settings) -> None:
@@ -51,20 +60,32 @@ class DenoiseProcessor(Processor):
         if mono.n_samples < params.n_fft:
             return ProcessorResult(clips=[mono], metrics={"skipped": "audio demasiado corto"})
 
-        if params.backend == "deepfilternet":
+        backend = self._resolve_backend(params.backend)
+        if backend == "deepfilternet":
             samples = self._deepfilternet(mono)
+        elif backend == "noisereduce":
+            samples = self._noisereduce(mono, params)
         else:
             samples = self._spectral(mono, params)
 
         return ProcessorResult(
             clips=[AudioClip(samples, mono.sample_rate)],
             metrics={
-                "backend": params.backend,
+                "backend": backend,
                 "strength": params.strength,
                 "input_rms": float(np.sqrt(np.mean(np.square(mono.samples, dtype=np.float64)))),
                 "output_rms": float(np.sqrt(np.mean(np.square(samples, dtype=np.float64)))),
             },
         )
+
+    @staticmethod
+    def _resolve_backend(backend: str) -> str:
+        """Resuelve `auto` al mejor backend instalado."""
+        if backend != "auto":
+            return backend
+        if importlib.util.find_spec("noisereduce") is not None:
+            return "noisereduce"
+        return "spectral"
 
     @staticmethod
     def _spectral(mono: AudioClip, params: DenoiseParams) -> np.ndarray:
@@ -99,6 +120,21 @@ class DenoiseProcessor(Processor):
         if restored.size < x.size:  # rellenar por si el STFT recorta el final
             restored = np.pad(restored, (0, x.size - restored.size))
         return restored
+
+    @staticmethod
+    def _noisereduce(mono: AudioClip, params: DenoiseParams) -> np.ndarray:
+        if importlib.util.find_spec("noisereduce") is None:
+            raise ProcessorUnavailableError("denoise", ("noisereduce",))
+
+        import noisereduce
+
+        reduced = noisereduce.reduce_noise(
+            y=mono.samples[0],
+            sr=mono.sample_rate,
+            stationary=params.stationary,
+            prop_decrease=params.strength,
+        )
+        return np.asarray(reduced, dtype=np.float32)[: mono.n_samples]
 
     def _deepfilternet(self, mono: AudioClip) -> np.ndarray:
         if importlib.util.find_spec("df") is None:

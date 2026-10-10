@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
@@ -155,6 +156,39 @@ def test_denoise_deepfilternet_unavailable(client: TestClient, wav: bytes) -> No
     assert resp.status_code == 503
 
 
+def test_denoise_auto_backend(client: TestClient, wav: bytes) -> None:
+    resp = client.post(
+        "/preprocess/denoise", files=upload(wav), data={"params": json.dumps({"backend": "auto"})}
+    )
+    assert resp.status_code == 200, resp.text
+    expected = "noisereduce" if importlib.util.find_spec("noisereduce") else "spectral"
+    assert resp.json()["metrics"]["backend"] == expected
+
+
+def test_denoise_noisereduce_backend(client: TestClient, wav: bytes) -> None:
+    if importlib.util.find_spec("noisereduce") is None:
+        pytest.skip("noisereduce no está instalado")
+    resp = client.post(
+        "/preprocess/denoise",
+        files=upload(wav),
+        data={"params": json.dumps({"backend": "noisereduce"})},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["metrics"]["backend"] == "noisereduce"
+
+
+def test_normalize_lufs(client: TestClient, wav: bytes) -> None:
+    if importlib.util.find_spec("pyloudnorm") is None:
+        pytest.skip("pyloudnorm no está instalado")
+    resp = client.post(
+        "/preprocess/normalize",
+        files=upload(wav),
+        data={"params": json.dumps({"mode": "lufs", "target_db": -20.0})},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["metrics"]["mode"] == "lufs"
+
+
 def test_pipeline_preset(client: TestClient, wav: bytes) -> None:
     resp = client.post("/preprocess", files=upload(wav), data={"preset": "minimal"})
     assert resp.status_code == 200, resp.text
@@ -197,3 +231,107 @@ def test_module_bad_params(client: TestClient, wav: bytes) -> None:
 
 def test_unknown_module(client: TestClient) -> None:
     assert client.get("/preprocess/inventado").status_code == 404
+
+
+# --- diarize: backends `ecapa` (sin credenciales) y `pyannote` (gated) ---------
+
+
+def _installed(package: str) -> bool:
+    try:
+        return importlib.util.find_spec(package) is not None
+    except (ImportError, ValueError):
+        # El paquete padre no existe (p. ej. "pyannote.audio" sin "pyannote").
+        return False
+
+
+def test_diarize_info_lists_backends(client: TestClient) -> None:
+    from app.preprocessing.modules.diarize.backends import BACKENDS
+
+    resp = client.get("/preprocess/diarize")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body["params_schema"]["properties"]["backend"]["enum"]) == {
+        "auto",
+        "pyannote",
+        "ecapa",
+    }
+    assert body["available"] == any(cls.available() for cls in BACKENDS.values())
+
+
+def test_diarize_registry_availability(client: TestClient) -> None:
+    from app.preprocessing.modules.diarize.backends import BACKENDS
+
+    resp = client.get("/processors")
+    diarize = next(p for p in resp.json()["processors"] if p["name"] == "diarize")
+    assert diarize["available"] == any(cls.available() for cls in BACKENDS.values())
+
+
+def test_diarize_unknown_backend_rejected(client: TestClient, wav: bytes) -> None:
+    resp = client.post(
+        "/preprocess/diarize",
+        files=upload(wav),
+        data={"params": json.dumps({"backend": "inventado"})},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.skipif(_installed("pyannote.audio"), reason="pyannote está instalado")
+def test_diarize_pyannote_unavailable(client: TestClient, wav: bytes) -> None:
+    """Sin pyannote instalado, el backend gated responde 503 (nunca 200 silencioso)."""
+    resp = client.post(
+        "/preprocess/diarize",
+        files=upload(wav),
+        data={"params": json.dumps({"backend": "pyannote"})},
+    )
+    assert resp.status_code == 503
+    assert "pyannote" in resp.json()["detail"]
+
+
+def test_diarize_auto_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.preprocessing.base import ProcessorError
+    from app.preprocessing.modules.diarize.backends import BACKENDS
+    from app.preprocessing.modules.diarize.processor import DiarizeProcessor
+
+    monkeypatch.setattr(BACKENDS["pyannote"], "available", classmethod(lambda cls: True))
+    monkeypatch.setattr(BACKENDS["ecapa"], "available", classmethod(lambda cls: False))
+    assert DiarizeProcessor._resolve("auto") == "pyannote"
+
+    monkeypatch.setattr(BACKENDS["pyannote"], "available", classmethod(lambda cls: False))
+    monkeypatch.setattr(BACKENDS["ecapa"], "available", classmethod(lambda cls: True))
+    assert DiarizeProcessor._resolve("auto") == "ecapa"
+
+    monkeypatch.setattr(BACKENDS["ecapa"], "available", classmethod(lambda cls: False))
+    with pytest.raises(ProcessorError) as excinfo:
+        DiarizeProcessor._resolve("auto")
+    assert excinfo.value.status_code == 503
+
+
+def test_diarize_ecapa_clustering_separates_speakers() -> None:
+    if not _installed("sklearn"):
+        pytest.skip("scikit-learn no está instalado")
+    from app.preprocessing.modules.diarize.backends.ecapa_backend import EcapaBackend
+    from app.preprocessing.modules.diarize.params import DiarizeParams
+
+    embeddings = np.array(
+        [[1.0, 0.02], [1.0, 0.03], [-1.0, -0.02], [-1.0, -0.03]], dtype=np.float32
+    )
+    labels = EcapaBackend._cluster(embeddings, DiarizeParams(backend="ecapa", num_speakers=2))
+    assert labels[0] == labels[1]
+    assert labels[2] == labels[3]
+    assert labels[0] != labels[2]
+
+
+def test_diarize_ecapa_fuses_consecutive_turns() -> None:
+    from app.audio.types import AudioClip
+    from app.preprocessing.modules.diarize.backends.ecapa_backend import EcapaBackend
+    from app.preprocessing.modules.diarize.params import DiarizeParams
+
+    clip = AudioClip(np.zeros((1, 4 * 16000), dtype=np.float32), 16000)
+    regions = [(0, 16000), (16000, 32000), (32001, 48000), (48000, 64000)]
+    result = EcapaBackend._result(regions, np.array([0, 0, 1, 0]), clip, DiarizeParams())
+
+    assert [s.speaker for s in result.segments] == ["SPEAKER_00", "SPEAKER_01", "SPEAKER_00"]
+    assert result.segments[0].start == 0.0
+    assert result.segments[0].end == pytest.approx(2.0)
+    assert result.metrics["turns"] == 3
+    assert result.metrics["speakers"] == 2

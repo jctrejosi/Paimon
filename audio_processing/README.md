@@ -17,7 +17,9 @@ audio_processing/
 ├── Dockerfile / docker-compose.yml
 ├── requirements.txt            # base (transcripción + cadena mínima)
 ├── requirements-extras.txt     # módulos opcionales pesados
+├── eval/                       # banco de WER + verificación (ver eval/README.md)
 └── api/
+    ├── requirements-dev.txt    # pruebas y lint
     ├── app/
     │   ├── audio/              # núcleo: AudioClip, decode/encode, resample
     │   ├── deps.py             # token, validación y decodificación de subidas
@@ -46,7 +48,9 @@ audio_processing/
 ```
 
 Cada módulo es autocontenido: `processor.py` (la lógica) y `router.py` (su API).
-Añadir un módulo nuevo es crear su carpeta; el registry lo descubre solo.
+Añadir un módulo nuevo es crear su carpeta; el registry lo descubre solo. Los
+módulos con varios motores (p. ej. `denoise`, `diarize`) guardan sus backends en
+`backends/`.
 
 ## Endpoints
 
@@ -57,6 +61,28 @@ Añadir un módulo nuevo es crear su carpeta; el registry lo descubre solo.
 | `POST` | `/transcribe` | Transcribe un audio (`multipart`). Parámetro `preprocess=…`. |
 | `POST` | `/v1/audio/transcriptions` | Compatible con la API de OpenAI. |
 | `GET` | `/health`, `/providers` | Estado del servicio y proveedores. |
+| `GET` | `/` | Índice de endpoints (fuera de OpenAPI). |
+
+Campos de `POST /transcribe` (`multipart/form-data`):
+
+| Campo | Default | Uso |
+|---|---|---|
+| `file` | — | Audio a transcribir (obligatorio). |
+| `language` | `AUDIO_DEFAULT_LANGUAGE` (`es`) | ISO-639-1; `auto` fuerza autodetección. |
+| `model` | — | Override de modelo (el proveedor local lo devuelve en la respuesta; el modelo real se fija con `LOCAL_WHISPER_MODEL`). |
+| `provider` | `AUDIO_PROVIDER` | Proveedor a usar. |
+| `verbose` | `false` | Incluye `segments[]` con marcas de tiempo. |
+| `preprocess` | *(ninguno)* | Preset (`raw`, `minimal`, `clean`, `noisy`) o `none`. |
+
+Respuesta `200` (JSON): `id`, `provider`, `model`, `created`, `preprocess`,
+`text`, `language`, `language_probability`, `duration` y `segments[]`
+(`start`, `end`, `text`; solo con `verbose`).
+
+**`/v1/audio/transcriptions`**: acepta `file`, `model`, `language`,
+`response_format` (`json` | `text` | `verbose_json`), `prompt` y `temperature`
+(estos dos últimos por compatibilidad; aún no se usan). Usa siempre el
+proveedor por defecto. `text` devuelve texto plano; `verbose_json` añade
+`language`, `duration` y `segments[]`.
 
 ### Preprocesamiento (una API por módulo)
 
@@ -67,6 +93,27 @@ Añadir un módulo nuevo es crear su carpeta; el registry lo descubre solo.
 | `POST` | `/preprocess` | Aplica un **preset** o una lista de pasos. |
 | `GET/POST` | `/preprocess/<módulo>` | **API propia** de cada módulo. |
 | `POST` | `/analyze` | Atajo de `/preprocess/analyze`. |
+
+- `GET /preprocess/<módulo>` → información del módulo: `description`, `available`,
+  `required_packages` y `params_schema` (JSON Schema de sus parámetros).
+- `POST /preprocess/<módulo>` → campos `file`, `params` (JSON del módulo) e
+  `include_audio` (añadir el WAV resultante). Devuelve `audios[]` (WAV en base64 +
+  `sample_rate` + `duration`), `segments[]`, `metrics` y `elapsed_ms`.
+- `POST /preprocess` → campos `file`, `preset` **o** `steps` (lista JSON) e
+  `include_audio`. Cada paso admite `"resample"`,
+  `{"name": "resample", "params": {…}}` o `{"resample": {…}}`. Devuelve el
+  informe por paso (`steps[]`) y el audio final.
+
+### Formatos y límites
+
+- Extensiones aceptadas: `.wav`, `.mp3`, `.m4a`, `.mp4`, `.aac`, `.ogg`, `.oga`,
+  `.opus`, `.flac`, `.webm` (las notas de voz de WhatsApp son `.ogg`/opus).
+- Tamaño máximo: `AUDIO_MAX_UPLOAD_MB` (25 MB por defecto) → `413` si se supera;
+  `415` si la extensión no está soportada; `400` si está vacío o no se puede
+  decodificar.
+- Si `AUDIO_API_TOKEN` está definido, `/transcribe` y `/v1/audio/transcriptions`
+  exigen `Authorization: Bearer <token>` (`401` si falta o no coincide); las
+  rutas de preprocesamiento aún no lo exigen.
 
 ## Módulos
 
@@ -79,9 +126,9 @@ Añadir un módulo nuevo es crear su carpeta; el registry lo descubre solo.
 | `normalize` | Normaliza nivel: `peak`, `rms` o `lufs`. | base (`lufs`→`pyloudnorm`) |
 | `analyze` | Métricas: pico, RMS, clipping, DC, silencio, bandas, SNR. | base |
 | `vad` | Voz (Silero, incluido en faster-whisper): recorta o separa tramos. | base |
-| `denoise` | Reduce ruido: `spectral` (propio) o `deepfilternet`. | `spectral` en base |
+| `denoise` | Reduce ruido: `auto` (noisereduce > spectral), `spectral`, `noisereduce` o `deepfilternet`. | base (`noisereduce` opcional) |
 | `dereverb` | Suprime reverberación tardía (WPE). | `nara_wpe` (extras) |
-| `diarize` | Etiqueta hablantes (pyannote). | `pyannote.audio` + `HF_TOKEN` |
+| `diarize` | Etiqueta hablantes (quién habla y cuándo). Backend `ecapa` (speechbrain) **sin credenciales** o `pyannote` (mejor calidad; modelos *gated*). | `speechbrain`+`scikit-learn` (extras) o `pyannote.audio`+`HF_TOKEN` |
 | `separate` | Separa fuentes (Demucs); aísla la voz. | `demucs` (extras) |
 
 Los módulos opcionales **no rompen nada** si faltan: se reportan como no
@@ -93,6 +140,36 @@ disponibles en `/processors` y responden `503` con un mensaje claro.
 - `minimal`: `channels → resample → highpass → normalize`.
 - `clean`: `minimal` + `vad`.
 - `noisy`: `channels → denoise → resample → highpass → normalize → vad`.
+
+### Diarización: backends `ecapa` y `pyannote`
+
+El módulo `diarize` etiqueta quién habla y cuándo (devuelve `segments[]` con
+`speaker`). Tiene dos motores intercambiables; `backend=auto` (por defecto) elige
+el mejor instalado:
+
+| Backend | Tecnología | Credenciales | Notas |
+|---|---|---|---|
+| `ecapa` | speechbrain (embeddings ECAPA) + clustering | **ninguna** | Recomendado para empezar; modelos públicos; CPU. |
+| `pyannote` | pyannote.audio | `HF_TOKEN` | Mejor calidad, pero sus modelos son *gated*. |
+
+**¿Qué es un modelo *gated* y qué es `HF_TOKEN`?** Los modelos *gated* de
+Hugging Face no son de descarga libre: para usarlos hay que (1) crear una cuenta,
+(2) aceptar las condiciones de uso en la página del modelo
+(p. ej. [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1))
+y (3) crear un *access token* (Settings → Access Tokens) y exportarlo como
+`HF_TOKEN`. El token es como una contraseña personal: no se sube al repo; va como
+variable de entorno (o en un `.env` local). El backend `ecapa` **no** requiere
+nada de esto.
+
+```bash
+# Diarización sin credenciales (la 1ª vez descarga el modelo de speechbrain)
+curl -s -F file=@audio.ogg -F 'params={"backend":"ecapa","num_speakers":2}' \
+  http://127.0.0.1:8000/preprocess/diarize | jq '.segments'
+
+# Con pyannote (requiere HF_TOKEN y aceptar las condiciones del modelo)
+curl -s -F file=@audio.ogg -F 'params={"backend":"pyannote"}' \
+  http://127.0.0.1:8000/preprocess/diarize | jq '.segments'
+```
 
 ## Uso
 
@@ -128,17 +205,29 @@ docker build -t paimon-audio-processing:extras \
 
 ## Configuración
 
+Se leen de variables de entorno o de un archivo `.env` (no versionado):
+
 | Variable | Default | Uso |
 |---|---|---|
-| `AUDIO_API_TOKEN` | *(vacío)* | Token Bearer opcional. |
+| `AUDIO_API_TOKEN` | *(vacío)* | Token Bearer opcional; protege `/transcribe` y `/v1/audio/transcriptions`. |
 | `AUDIO_PROVIDER` | `local` | Proveedor de transcripción por defecto. |
 | `AUDIO_MAX_UPLOAD_MB` | `25` | Tamaño máximo de subida. |
-| `AUDIO_DEFAULT_LANGUAGE` | `es` | Idioma si la petición no especifica uno. |
+| `AUDIO_DEFAULT_LANGUAGE` | `es` | Idioma por defecto si la petición no especifica uno (`auto` = autodetección). |
 | `LOCAL_WHISPER_MODEL` | `base` | Modelo: `tiny`/`base`/`small`/... |
 | `LOCAL_WHISPER_DEVICE` | `cpu` | Dispositivo. |
 | `LOCAL_WHISPER_COMPUTE_TYPE` | `int8` | Precisión (rápido en CPU). |
 | `WHISPER_MODEL_DIR` | `models` | Caché de pesos. |
-| `HF_TOKEN` | *(vacío)* | Token de Hugging Face (diarización). |
+| `HF_TOKEN` | *(vacío)* | Token de Hugging Face; solo lo usa la diarización `pyannote` (modelos *gated*). |
+
+## Evaluación (WER)
+
+En [`eval/`](eval/README.md) hay un banco para medir el efecto de cada preset con
+voz real (LibriSpeech + ruido a 15/5 dB). Resultado principal:
+
+- **`clean` (cadena mínima + VAD) es el mejor preset**: WER global 0.082 vs 0.116
+  sin preprocesar. El **VAD** es lo que más aporta.
+- `minimal` no mejora por sí solo; el **denoise no debe activarse por defecto**
+  (empeora salvo en ruido severo). Si se usa, `noisereduce` > `spectral`.
 
 ## Pruebas
 

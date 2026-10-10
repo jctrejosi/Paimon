@@ -1,63 +1,82 @@
-"""Módulo `diarize`: ¿quién habla y cuándo? (pyannote.audio).
+"""Módulo `diarize`: ¿quién habla y cuándo?
 
-Requiere la dependencia opcional `pyannote.audio` y, para los modelos gated de
-Hugging Face, un token en `HF_TOKEN`.
+Delega en un backend (ver `backends/`):
+
+- `ecapa`: embeddings ECAPA (speechbrain) + clustering. **Sin credenciales.**
+- `pyannote`: mejor calidad, pero sus modelos están *gated* → `HF_TOKEN`.
+
+Con `backend="auto"` se usa pyannote si está instalado; si no, `ecapa`.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Any
 
-from app.audio.types import AudioClip, Segment
-from app.preprocessing.base import Processor, ProcessorError, ProcessorResult
+from app.audio.types import AudioClip
+from app.preprocessing.base import (
+    Processor,
+    ProcessorError,
+    ProcessorResult,
+    ProcessorUnavailableError,
+)
 
-
-class DiarizeParams(BaseModel):
-    model: str = "pyannote/speaker-diarization-3.1"
-    num_speakers: int | None = Field(default=None, ge=1)
-    min_speakers: int | None = Field(default=None, ge=1)
-    max_speakers: int | None = Field(default=None, ge=1)
+from .backends import BACKENDS
+from .backends.base import DiarizationBackend
+from .params import DiarizeParams
 
 
 class DiarizeProcessor(Processor):
     name = "diarize"
-    description = "Diarización (pyannote): etiqueta el hablante de cada tramo."
+    description = (
+        "Diarización (quién habla): backend 'ecapa' (speechbrain, sin credenciales) "
+        "o 'pyannote' (modelos gated: requiere HF_TOKEN)."
+    )
     params_model = DiarizeParams
-    required_packages = ("pyannote.audio",)
+    # La disponibilidad depende del backend elegido: ver `backends/`.
+    required_packages = ()
 
     def __init__(self, settings) -> None:
         super().__init__(settings)
-        self._pipeline = None
-        self._model_name: str | None = None
+        self._instances: dict[str, DiarizationBackend] = {}
 
-    def process(self, clip: AudioClip, params: DiarizeParams) -> ProcessorResult:
-        import torch
-        from pyannote.audio import Pipeline as PyannotePipeline
+    @classmethod
+    def available(cls) -> bool:
+        return any(backend.available() for backend in BACKENDS.values())
 
-        if self._pipeline is None or self._model_name != params.model:
-            self._pipeline = PyannotePipeline.from_pretrained(
-                params.model, use_auth_token=self.settings.hf_token
-            )
-            self._model_name = params.model
-
-        mono = clip.to_mono()
-        waveform = torch.from_numpy(mono.samples.copy())  # (1, muestras)
-        try:
-            diarization = self._pipeline({"waveform": waveform, "sample_rate": mono.sample_rate})
-        except Exception as exc:  # se reenvía como error del módulo
-            raise ProcessorError(
-                f"La diarización falló: {exc}", processor=self.name
-            ) from exc
-
-        segments = [
-            Segment(start=turn.start, end=turn.end, speaker=str(speaker))
-            for turn, _, speaker in diarization.itertracks(yield_label=True)
-        ]
+    def process(self, clip: AudioClip, params: Any) -> ProcessorResult:
+        backend = self._get_backend(self._resolve(params.backend))
+        result = backend.diarize(clip, params)
         return ProcessorResult(
-            clips=[mono],
-            segments=segments,
-            metrics={
-                "turns": len(segments),
-                "speakers": len({segment.speaker for segment in segments}),
-            },
+            clips=[clip.to_mono()], segments=result.segments, metrics=result.metrics
         )
+
+    @staticmethod
+    def _resolve(name: str) -> str:
+        """Resuelve `auto` al mejor backend instalado."""
+        if name != "auto":
+            return name
+        for candidate in ("pyannote", "ecapa"):
+            if BACKENDS[candidate].available():
+                return candidate
+        raise ProcessorError(
+            "Ningún backend de diarización está disponible: instala 'speechbrain' y "
+            "'scikit-learn' (backend 'ecapa', sin credenciales) o 'pyannote.audio' "
+            "junto con HF_TOKEN (mejor calidad).",
+            processor="diarize",
+            status_code=503,
+        )
+
+    def _get_backend(self, name: str) -> DiarizationBackend:
+        cls = BACKENDS.get(name)
+        if cls is None:
+            raise ProcessorError(
+                f"Backend de diarización desconocido: '{name}'. "
+                f"Disponibles: {', '.join(BACKENDS)}.",
+                processor=self.name,
+                status_code=400,
+            )
+        if not cls.available():
+            raise ProcessorUnavailableError(f"{self.name}/{name}", cls.required_packages)
+        if name not in self._instances:
+            self._instances[name] = cls(self.settings)
+        return self._instances[name]

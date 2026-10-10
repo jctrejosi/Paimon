@@ -20,16 +20,7 @@ PRESETS: dict[str, list[tuple[str, dict]]] = {
     ],
     "noisy": [
         ("channels", {"mode": "mono"}),
-        ("denoise", {"backend": "spectral", "strength": 1.0}),
-        ("resample", {"sample_rate": 16000}),
-        ("highpass", {"cutoff": 80.0}),
-        ("normalize", {"mode": "peak", "target_db": -1.0}),
-        ("vad", {}),
-    ],
-    # Variante con DeepFilterNet: requiere la dependencia opcional `deepfilternet`.
-    "noisy-dfn": [
-        ("channels", {"mode": "mono"}),
-        ("denoise", {"backend": "deepfilternet"}),
+        ("denoise", {"backend": "auto", "strength": 1.0}),
         ("resample", {"sample_rate": 16000}),
         ("highpass", {"cutoff": 80.0}),
         ("normalize", {"mode": "peak", "target_db": -1.0}),
