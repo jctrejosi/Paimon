@@ -124,3 +124,67 @@ def test_transcribe_without_preprocess(client: TestClient) -> None:
     resp = client.post("/transcribe", files=_audio(), data={"preprocess": "none"})
     assert resp.status_code == 200, resp.text
     assert resp.json()["preprocess"] is None
+
+
+class _FakeWhisperModel:
+    """Captura los kwargs con los que se llama a `transcribe`."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def transcribe(self, audio, **kwargs):
+        self.calls.append(kwargs)
+        info = type("Info", (), {"language": "es", "language_probability": 1.0, "duration": 1.0})()
+        return [], info
+
+
+def test_defaults_enable_vad_and_disable_condition() -> None:
+    from app.config import Settings
+
+    settings = Settings()
+    assert settings.local_whisper_model == "small"
+    assert settings.local_whisper_vad is True
+    assert settings.local_whisper_condition_on_previous_text is False
+
+
+def test_transcribe_accepts_decode_params(client: TestClient) -> None:
+    resp = client.post(
+        "/transcribe",
+        files=_audio(),
+        data={
+            "vad": "false",
+            "beam_size": "1",
+            "condition_on_previous_text": "true",
+            "initial_prompt": "Paimon",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def test_local_whisper_passes_decode_params() -> None:
+    from app.config import Settings
+    from app.providers.local_whisper import LocalWhisperProvider
+    from app.schemas import TranscribeRequest
+
+    settings = Settings(
+        local_whisper_vad=True,
+        local_whisper_beam_size=2,
+        local_whisper_condition_on_previous_text=False,
+        local_whisper_initial_prompt="contexto",
+    )
+    provider = LocalWhisperProvider(settings)
+    model = _FakeWhisperModel()
+    provider._models[settings.local_whisper_model] = model
+
+    provider._transcribe_sync(TranscribeRequest(data=b"RIFF....WAVE", language="es"))
+    assert model.calls[0]["vad_filter"] is True
+    assert model.calls[0]["beam_size"] == 2
+    assert model.calls[0]["condition_on_previous_text"] is False
+    assert model.calls[0]["initial_prompt"] == "contexto"
+
+    # Un valor explícito en la petición gana sobre el de la configuración.
+    provider._transcribe_sync(
+        TranscribeRequest(data=b"RIFF....WAVE", language="es", vad=False, beam_size=1)
+    )
+    assert model.calls[1]["vad_filter"] is False
+    assert model.calls[1]["beam_size"] == 1

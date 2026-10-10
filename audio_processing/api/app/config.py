@@ -39,13 +39,24 @@ class Settings(BaseSettings):
     audio_provider: ProviderName = "local"
 
     # --- Motor local (faster-whisper) ------------------------------------
-    # Tamaño/nombre del modelo: tiny | base | small | medium | large-v3 | ...
-    local_whisper_model: str = "base"
+    # tiny | base | small | medium | large-v3 | large-v3-turbo | ...
+    # `small` es el mejor punto calidad/latencia medido en eval/ (ver README).
+    local_whisper_model: str = "small"
     local_whisper_device: str = "cpu"
     # int8 es lo más rápido en CPU; usar "float32" si se prioriza precisión.
     local_whisper_compute_type: str = "int8"
     # Directorio donde se cachean los pesos descargados.
     whisper_model_dir: Path = Path("models")
+
+    # --- Parámetros de decodificación (faster-whisper) --------------------
+    # VAD (Silero) para recortar silencio: reduce alucinaciones y cómputo.
+    local_whisper_vad: bool = True
+    # Ancho de búsqueda del decodificador (5 = por defecto; 1 = más rápido).
+    local_whisper_beam_size: int = 5
+    # False evita bucles de repetición entre segmentos (mejor en notas cortas).
+    local_whisper_condition_on_previous_text: bool = False
+    # Texto de contexto para sesgar nombres/jerga (None = sin prompt).
+    local_whisper_initial_prompt: str | None = None
 
     # --- Módulos opcionales de preprocesamiento ---------------------------
     # Token de Hugging Face para modelos gated (p. ej. diarización con pyannote).

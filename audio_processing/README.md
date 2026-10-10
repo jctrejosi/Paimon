@@ -73,9 +73,13 @@ Campos de `POST /transcribe` (`multipart/form-data`):
 |---|---|---|
 | `file` | — | Audio a transcribir (**único campo obligatorio**). |
 | `language` | `AUDIO_DEFAULT_LANGUAGE` (`es`) | ISO-639-1; `auto` fuerza autodetección. |
-| `model` | `LOCAL_WHISPER_MODEL` (`base`) | Modelo del proveedor (el local lo devuelve en la respuesta). |
+| `model` | `LOCAL_WHISPER_MODEL` (`small`) | Modelo a usar; en el local **selecciona el modelo** (`base`/`small`/`medium`/...). |
 | `provider` | `AUDIO_PROVIDER` (`local`) | Proveedor a usar. |
 | `verbose` | `false` | Incluye `segments[]` con marcas de tiempo. |
+| `vad` | `true` | VAD (Silero): recorta silencio, reduce alucinaciones. |
+| `beam_size` | `5` | Ancho de búsqueda del decodificador (1 = más rápido). |
+| `condition_on_previous_text` | `false` | Condicionar al texto previo (False evita bucles). |
+| `initial_prompt` | *(vacío)* | Contexto para sesgar nombres/jerga (opcional). |
 | `preprocess` | `none` | `none` o un preset (`raw`, `minimal`, `clean`, `noisy`). |
 
 Respuesta `200` (JSON): `id`, `provider`, `model`, `created`, `preprocess`,
@@ -220,9 +224,13 @@ Se leen de variables de entorno o de un archivo `.env` (no versionado):
 | `AUDIO_PROVIDER` | `local` | Proveedor de transcripción por defecto. |
 | `AUDIO_MAX_UPLOAD_MB` | `25` | Tamaño máximo de subida. |
 | `AUDIO_DEFAULT_LANGUAGE` | `es` | Idioma por defecto si la petición no especifica uno (`auto` = autodetección). |
-| `LOCAL_WHISPER_MODEL` | `base` | Modelo: `tiny`/`base`/`small`/... |
+| `LOCAL_WHISPER_MODEL` | `small` | Modelo: `tiny`/`base`/`small`/`medium`/`large-v3-turbo`. |
 | `LOCAL_WHISPER_DEVICE` | `cpu` | Dispositivo. |
 | `LOCAL_WHISPER_COMPUTE_TYPE` | `int8` | Precisión (rápido en CPU). |
+| `LOCAL_WHISPER_VAD` | `true` | VAD (Silero) en la decodificación. |
+| `LOCAL_WHISPER_BEAM_SIZE` | `5` | Ancho de búsqueda (1 = más rápido). |
+| `LOCAL_WHISPER_CONDITION_ON_PREVIOUS_TEXT` | `false` | Condicionar al texto previo (False evita bucles). |
+| `LOCAL_WHISPER_INITIAL_PROMPT` | *(vacío)* | Contexto/vocabulario para sesgar. |
 | `WHISPER_MODEL_DIR` | `models` | Caché de pesos. |
 | `HF_TOKEN` | *(vacío)* | Token de Hugging Face; solo lo usa la diarización `pyannote` (modelos *gated*). |
 
@@ -235,6 +243,26 @@ voz real (LibriSpeech + ruido a 15/5 dB). Resultado principal:
   sin preprocesar. El **VAD** es lo que más aporta.
 - `minimal` no mejora por sí solo; el **denoise no debe activarse por defecto**
   (empeora salvo en ruido severo). Si se usa, `noisereduce` > `spectral`.
+
+### Ajuste del motor (modelo y decodificación)
+
+A/B sobre el mismo set (6 clips × 3 condiciones), mismos datos:
+
+| Configuración | WER global | clean | snr15 | snr5 |
+|---|---|---|---|---|
+| `base`, sin VAD | 0.110 | 0.081 | 0.100 | 0.148 |
+| `base` + VAD | 0.118 | 0.092 | 0.100 | 0.162 |
+| `small`, sin VAD | 0.041 | 0.000 | 0.000 | 0.122 |
+| **`small` + VAD** | **0.023** | 0.000 | 0.014 | 0.056 |
+
+Conclusiones (son los defaults actuales: `small` + `vad=true` +
+`condition_on_previous_text=false`):
+
+1. **El modelo es el factor dominante**: `base`→`small` baja el WER global de 0.110 a 0.041.
+2. **El VAD ayuda cuando el modelo es bueno** (con `small`: 0.041 → 0.023), sobre todo en ruido.
+3. **`condition_on_previous_text=false`** evita bucles (0.116 → 0.110 en limpio).
+4. **Coste**: `small` es ~3× más lento que `base` en CPU (~14-18 s vs ~5-7 s por clip de ~6 s).
+   Si priorizas latencia, baja a `base`; si priorizas calidad, sube a `medium`/`large-v3-turbo`.
 
 ## Pruebas
 

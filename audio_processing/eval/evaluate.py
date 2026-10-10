@@ -99,7 +99,15 @@ async def evaluate(args: argparse.Namespace) -> int:
                 break
 
             result = await provider.transcribe(
-                TranscribeRequest(data=payload, filename=item["audio"], language=args.language)
+                TranscribeRequest(
+                    data=payload,
+                    filename=item["audio"],
+                    language=args.language,
+                    vad=args.vad,
+                    beam_size=args.beam_size,
+                    condition_on_previous_text=args.condition_on_previous_text,
+                    initial_prompt=args.initial_prompt,
+                )
             )
             elapsed = time.perf_counter() - started
 
@@ -144,6 +152,17 @@ def main() -> None:
     )
     parser.add_argument("--limit", type=int, default=0, help="Limita el nº de audios (0 = todos).")
     parser.add_argument("--verbose", action="store_true")
+    # Parámetros de decodificación (por defecto igual que un decoder "crudo").
+    parser.add_argument(
+        "--vad", dest="vad", action="store_true", help="Activar VAD en la decodificación."
+    )
+    parser.add_argument(
+        "--no-vad", dest="vad", action="store_false", help="Desactivar VAD (default)."
+    )
+    parser.set_defaults(vad=False)
+    parser.add_argument("--beam-size", type=int, default=5)
+    parser.add_argument("--condition-on-previous-text", action="store_true")
+    parser.add_argument("--initial-prompt", default=None)
     args = parser.parse_args()
     args.variants = [name.strip() for name in args.variants.split(",") if name.strip()]
 

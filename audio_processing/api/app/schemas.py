@@ -20,6 +20,16 @@ class TranscribeRequest(BaseModel):
     model: str | None = Field(default=None, description="Modelo específico del proveedor.")
     verbose: bool = Field(default=False, description="Incluir segmentos con marcas de tiempo.")
 
+    # Parámetros de decodificación (None = usar los valores de `Settings`).
+    vad: bool | None = Field(default=None, description="Recortar silencio con VAD (Silero).")
+    beam_size: int | None = Field(default=None, description="Ancho de búsqueda del decodificador.")
+    condition_on_previous_text: bool | None = Field(
+        default=None, description="Condicionar cada segmento al texto anterior."
+    )
+    initial_prompt: str | None = Field(
+        default=None, description="Texto de contexto para sesgar el vocabulario."
+    )
+
 
 class SegmentOut(BaseModel):
     start: float

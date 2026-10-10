@@ -155,10 +155,22 @@ async def transcribe(
         str, Form(description="ISO-639-1 o 'auto' (autodetección).")
     ] = settings.audio_default_language or "auto",
     model: Annotated[
-        str, Form(description="Modelo específico del proveedor.")
+        str, Form(description="Modelo a usar (base/small/medium/large-v3-turbo/...).")
     ] = settings.local_whisper_model,
     provider: Annotated[str, Form(description="Proveedor a usar.")] = settings.audio_provider,
     verbose: Annotated[bool, Form(description="Incluir segmentos con marcas de tiempo.")] = False,
+    vad: Annotated[
+        bool, Form(description="Recortar silencio con VAD (reduce alucinaciones).")
+    ] = settings.local_whisper_vad,
+    beam_size: Annotated[
+        int, Form(description="Ancho de búsqueda del decodificador (5; 1 = más rápido).")
+    ] = settings.local_whisper_beam_size,
+    condition_on_previous_text: Annotated[
+        bool, Form(description="Condicionar cada segmento al texto anterior (False evita bucles).")
+    ] = settings.local_whisper_condition_on_previous_text,
+    initial_prompt: Annotated[
+        str, Form(description="Contexto para sesgar nombres/jerga (opcional).")
+    ] = settings.local_whisper_initial_prompt or "",
     preprocess: Annotated[
         str, Form(description="'none' o un preset ('raw', 'minimal', 'clean', 'noisy').")
     ] = "none",
@@ -183,6 +195,10 @@ async def transcribe(
         language=resolve_language(language),
         model=model,
         verbose=verbose,
+        vad=vad,
+        beam_size=beam_size,
+        condition_on_previous_text=condition_on_previous_text,
+        initial_prompt=initial_prompt,
     )
     backend = manager.get(provider or settings.audio_provider)
     result = await backend.transcribe(request)

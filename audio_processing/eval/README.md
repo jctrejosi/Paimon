@@ -57,6 +57,28 @@ python evaluate.py --data-dir data_real --language en \
 5. Si se usa denoise, **`noisereduce` es mejor que el `spectral` propio**
    (en 5 dB: 0.134 vs 0.176). Por eso el backend por defecto es `auto`.
 
+## Motor: modelo y decodificación
+
+`evaluate.py` acepta parámetros del decodificador para aislar su efecto (por
+defecto usa un decoder "crudo": **sin VAD**):
+
+```bash
+python evaluate.py --data-dir data_real --language en --variants none --vad --model small
+# flags: --vad / --no-vad, --beam-size N, --condition-on-previous-text, --model <nombre>
+```
+
+A/B sobre el set real (WER global, 6 clips × 3 condiciones):
+
+| Configuración | WER global |
+|---|---|
+| `base`, sin VAD | 0.110 |
+| `base` + VAD | 0.118 |
+| `small`, sin VAD | 0.041 |
+| **`small` + VAD** | **0.023** |
+
+El **modelo manda**; el VAD **suma sobre un modelo bueno** (con `base` era neutro).
+Coste en CPU: `small` ≈ 3× `base` (~14-18 s vs ~5-7 s por clip de ~6 s).
+
 ## Limitaciones
 
 - Con voz sintética (español), los artefactos del TTS dominan y **ninguna variante

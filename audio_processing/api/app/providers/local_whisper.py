@@ -21,7 +21,8 @@ class LocalWhisperProvider(TranscriptionProvider):
 
     def __init__(self, settings: Settings) -> None:
         super().__init__(settings)
-        self._model = None
+        # Un modelo por nombre (se cargan bajo demanda y se cachean).
+        self._models: dict[str, object] = {}
         self._lock = asyncio.Lock()
 
     @classmethod
@@ -33,7 +34,7 @@ class LocalWhisperProvider(TranscriptionProvider):
     def default_model(cls, settings: Settings) -> str | None:
         return settings.local_whisper_model
 
-    def _load_model(self):
+    def _load_model(self, name: str):
         # Import perezoso: evita depender de faster-whisper en pruebas que usan
         # un proveedor falso.
         try:
@@ -46,21 +47,40 @@ class LocalWhisperProvider(TranscriptionProvider):
             ) from exc
 
         return WhisperModel(
-            self.settings.local_whisper_model,
+            name,
             device=self.settings.local_whisper_device,
             compute_type=self.settings.local_whisper_compute_type,
             download_root=str(self.settings.whisper_model_dir),
         )
 
+    def _model_for(self, name: str):
+        if name not in self._models:
+            self._models[name] = self._load_model(name)
+        return self._models[name]
+
     def _transcribe_sync(self, request: TranscribeRequest) -> TranscriptResult:
-        if self._model is None:
-            self._model = self._load_model()
+        model_name = request.model or self.settings.local_whisper_model
+        model = self._model_for(model_name)
+
+        s = self.settings
+        vad = request.vad if request.vad is not None else s.local_whisper_vad
+        beam = request.beam_size if request.beam_size is not None else s.local_whisper_beam_size
+        cond = (
+            request.condition_on_previous_text
+            if request.condition_on_previous_text is not None
+            else s.local_whisper_condition_on_previous_text
+        )
+        prompt = request.initial_prompt or s.local_whisper_initial_prompt
 
         try:
-            segments_iter, info = self._model.transcribe(
+            segments_iter, info = model.transcribe(
                 io.BytesIO(request.data),
                 language=request.language,
                 task="transcribe",
+                vad_filter=vad,
+                beam_size=beam,
+                condition_on_previous_text=cond,
+                initial_prompt=prompt,
             )
             segments = [
                 Segment(start=seg.start, end=seg.end, text=seg.text) for seg in segments_iter
@@ -73,7 +93,7 @@ class LocalWhisperProvider(TranscriptionProvider):
         text = "".join(seg.text for seg in segments).strip()
         return TranscriptResult(
             provider=self.name,
-            model=request.model or self.settings.local_whisper_model,
+            model=model_name,
             text=text,
             language=getattr(info, "language", None),
             language_probability=getattr(info, "language_probability", None),
@@ -87,4 +107,4 @@ class LocalWhisperProvider(TranscriptionProvider):
             return await asyncio.to_thread(self._transcribe_sync, request)
 
     async def aclose(self) -> None:
-        self._model = None
+        self._models.clear()
