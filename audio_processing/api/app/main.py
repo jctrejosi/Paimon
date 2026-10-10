@@ -151,13 +151,17 @@ async def list_providers() -> ProvidersResponse:
 )
 async def transcribe(
     file: Annotated[UploadFile, File(description="Archivo de audio a transcribir.")],
-    language: Annotated[str | None, Form(description="ISO-639-1 o 'auto'.")] = None,
-    model: Annotated[str | None, Form(description="Modelo específico del proveedor.")] = None,
-    provider: Annotated[str | None, Form(description="Proveedor a usar.")] = None,
-    verbose: Annotated[bool, Form(description="Incluir segmentos con tiempos.")] = False,
+    language: Annotated[
+        str, Form(description="ISO-639-1 o 'auto' (autodetección).")
+    ] = settings.audio_default_language or "auto",
+    model: Annotated[
+        str, Form(description="Modelo específico del proveedor.")
+    ] = settings.local_whisper_model,
+    provider: Annotated[str, Form(description="Proveedor a usar.")] = settings.audio_provider,
+    verbose: Annotated[bool, Form(description="Incluir segmentos con marcas de tiempo.")] = False,
     preprocess: Annotated[
-        str, Form(description="Preset de limpieza ('minimal', 'clean', 'noisy') o 'none'.")
-    ] = "",
+        str, Form(description="'none' o un preset ('raw', 'minimal', 'clean', 'noisy').")
+    ] = "none",
 ) -> TranscribeResponse:
     content = await file.read()
     validate_audio(content, file.filename)

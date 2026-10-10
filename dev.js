@@ -17,9 +17,11 @@
  *
  * PUERTOS
  *   Las dos APIs escuchan internamente en :8000. Al levantar ambos, la segunda
- *   se publica en el siguiente puerto libre (:8001). Se puede fijar con las
- *   variables AUDIO_HOST_PORT / IMAGE_API_HOST_PORT. Los demás puertos no
- *   cambian: ComfyUI :8188 y Redis :6379 (image_generator), worker :9100.
+ *   se publica en el siguiente puerto libre (:8001), saltando los puertos ya
+ *   ocupados del host. Se puede fijar con las variables AUDIO_HOST_PORT /
+ *   IMAGE_API_HOST_PORT. Si un contenedor ya está en marcha, se conserva su
+ *   puerto (re-ejecutar no mueve las URLs). Los demás puertos no cambian:
+ *   ComfyUI :8188 y Redis :6379 (image_generator), worker :9100.
  *
  * Logs: logs/<app>.log (salida de `docker compose`).
  */
@@ -39,17 +41,20 @@ const UP_TIMEOUT_MS = 180000;
 // ── Catálogo de aplicativos ─────────────────────────────────
 // `port` = puerto del host que publica la API; se reasigna si hay conflicto.
 // `portEnv` = variable que el docker-compose.yml del app lee para ese puerto.
+// `container` = contenedor de la API; si ya corre, se conserva su puerto actual.
 const PROJECTS = [
   {
     name: "audio",
     label: "audio_processing",
     dir: "audio_processing",
+    container: "paimon-audio-processing",
     portEnv: "AUDIO_HOST_PORT",
     port: 8000,
     color: "\x1b[36m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
-      ["docs", `http://localhost:${p}/docs`],
+      ["Swagger", `http://localhost:${p}/docs`],
+      ["OpenAPI", `http://localhost:${p}/openapi.json`],
       ["transcribe", `http://localhost:${p}/transcribe`],
     ],
   },
@@ -57,12 +62,14 @@ const PROJECTS = [
     name: "image",
     label: "image_generator",
     dir: "image_generator",
+    container: "paimon-image-api",
     portEnv: "IMAGE_API_HOST_PORT",
     port: 8000,
     color: "\x1b[32m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
-      ["docs", `http://localhost:${p}/docs`],
+      ["Swagger", `http://localhost:${p}/docs`],
+      ["OpenAPI", `http://localhost:${p}/openapi.json`],
       ["ComfyUI", "http://localhost:8188"],
     ],
   },
@@ -114,17 +121,36 @@ function unknownFlags(argv) {
 }
 
 /**
- * Asigna a cada app un puerto de host único (evita que las dos APIs choquen
- * en :8000). Respeta los `RESERVED_PORTS` y el orden del catálogo.
+ * Puerto de partida de una app. Si el usuario fijó `AUDIO_HOST_PORT` /
+ * `IMAGE_API_HOST_PORT` en el entorno, manda ese valor (`pinned`); si no, el
+ * del catálogo y se reasigna al siguiente libre.
  */
-function assignPorts(projects) {
-  const used = new Set(RESERVED_PORTS);
+function preferredPort(project) {
+  const raw = Number.parseInt(process.env[project.portEnv] ?? "", 10);
+  if (Number.isInteger(raw) && raw > 0) return { port: raw, pinned: true };
+  return { port: project.port, pinned: false };
+}
+
+/**
+ * Asigna a cada app un puerto de host único: evita choques entre las dos APIs,
+ * respeta los `RESERVED_PORTS` y salta los puertos ya ocupados en el host.
+ */
+async function assignPorts(projects) {
+  // Los puertos fijados por el usuario se reservan antes de repartir el resto.
+  const pinned = projects.map(preferredPort).filter((p) => p.pinned).map((p) => p.port);
+  const used = new Set([...RESERVED_PORTS, ...pinned]);
   const ports = {};
-  for (const p of projects) {
-    let port = p.port;
-    while (used.has(port)) port += 1;
+  for (const project of projects) {
+    const start = preferredPort(project);
+    // Si el contenedor ya está en marcha, conservamos su puerto del host:
+    // re-ejecutar dev.js no debe mover las URLs.
+    const live = project.container ? runningHostPort(project.container, 8000) : null;
+    let port = start.pinned ? start.port : (live ?? start.port);
+    if (!start.pinned && live === null) {
+      while (used.has(port) || !(await isPortFree(port))) port += 1;
+    }
     used.add(port);
-    ports[p.name] = port;
+    ports[project.name] = port;
   }
   return ports;
 }
@@ -159,6 +185,16 @@ function waitForPort(port, timeoutMs = 90000) {
   });
 }
 
+/** True si el puerto está libre en 127.0.0.1 (prueba con un servidor efímero). */
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => server.close(() => resolve(true)));
+    server.listen(port, "127.0.0.1");
+  });
+}
+
 // ── Logs ────────────────────────────────────────────────────
 
 function openLog(name) {
@@ -179,6 +215,17 @@ function checkDocker() {
     return false;
   }
   return true;
+}
+
+/** Puerto del host que un contenedor ya en marcha publica para `containerPort`. */
+function runningHostPort(container, containerPort) {
+  const r = spawnSync("docker", ["port", container, `${containerPort}/tcp`], {
+    encoding: "utf8",
+  });
+  if (r.status !== 0 || !r.stdout) return null;
+  // Salida tipo "127.0.0.1:8003"; si hay varias líneas (IPv4/IPv6), tomamos la 1ª.
+  const match = r.stdout.trim().split("\n")[0].match(/:(\d+)$/);
+  return match ? Number.parseInt(match[1], 10) : null;
 }
 
 function startProject(project, port, { build }) {
@@ -257,7 +304,8 @@ function printUrls(projects, ports) {
       console.log(`    ${name.padEnd(11)} → ${url}`);
     }
   }
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("Swagger → abre el enlace 'Swagger' de cada API para probarla en el navegador.");
   console.log("Logs de compose: logs/*.log");
 }
 
@@ -297,8 +345,8 @@ function printHelp() {
   out.push("");
   out.push("PUERTOS");
   out.push("  Ambas APIs usan :8000 internamente. Al levantar las dos, la segunda se");
-  out.push("  publica en el siguiente puerto libre (:8001). Configurable con las");
-  out.push("  variables AUDIO_HOST_PORT e IMAGE_API_HOST_PORT.");
+  out.push("  publica en el siguiente puerto libre (:8001), saltando los ya ocupados");
+  out.push("  en el host. Fijar con AUDIO_HOST_PORT e IMAGE_API_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");
   out.push("  node dev.js                    → audio_processing + image_generator");
@@ -345,7 +393,7 @@ async function main() {
   if (LOGS) return followLogs(projects);
 
   fs.mkdirSync(LOGS_DIR, { recursive: true });
-  const ports = assignPorts(projects);
+  const ports = await assignPorts(projects);
   console.log(`🧠 Paimon — aplicativos: ${label}  (logs → logs/*.log)`);
   console.log("");
 

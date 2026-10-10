@@ -220,8 +220,8 @@ class TranscriptionProvider(ABC):
   - [x] `.dockerignore` / `.gitignore`.
   - [x] Endpoint compatible OpenAI (`/v1/audio/transcriptions`).
 - **Fase 2 — Validación**
-  - [ ] Probar con audios reales (wav, mp3 y `.ogg`/opus).
-  - [ ] Medir latencia y ajustar tamaño de modelo.
+  - [x] `.ogg`/opus (caso WhatsApp) probado end-to-end en la API en Docker: texto correcto.
+  - [ ] Probar más formatos reales (mp3, m4a) y medir latencia.
   - [x] Documentar uso en `audio_processing/README.md`.
   - [x] Smoke test del proveedor local (carga de modelo + decodificación + transcripción) OK.
 - **Fase 3 — Futuro (no v1)**

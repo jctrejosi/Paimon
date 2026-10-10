@@ -2,21 +2,28 @@
 
 from __future__ import annotations
 
-from fastapi import Header, HTTPException, UploadFile
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, UploadFile
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .audio import ALLOWED_EXTENSIONS, AudioClip, decode_bytes, extension_of, max_bytes
 from .config import get_settings
 
 settings = get_settings()
 
+# Esquema Bearer declarado para que Swagger UI muestre el botón "Authorize".
+bearer_scheme = HTTPBearer(auto_error=False)
 
-def require_token(authorization: str | None = Header(default=None)) -> None:
+
+def require_token(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> None:
     """Exige `Authorization: Bearer <token>` cuando hay token configurado."""
     expected = settings.audio_api_token
     if not expected:
         return
-    scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or token != expected:
+    if credentials is None or credentials.credentials != expected:
         raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
 
 

@@ -54,6 +54,10 @@ módulos con varios motores (p. ej. `denoise`, `diarize`) guardan sus backends e
 
 ## Endpoints
 
+Ambas APIs exponen una interfaz interactiva: **Swagger UI** en `/docs` (y Redoc
+en `/redoc`). Si configuras `AUDIO_API_TOKEN`, usa el botón **Authorize** de
+Swagger para probar las rutas protegidas.
+
 ### Transcripción
 
 | Método | Ruta | Descripción |
@@ -67,12 +71,12 @@ Campos de `POST /transcribe` (`multipart/form-data`):
 
 | Campo | Default | Uso |
 |---|---|---|
-| `file` | — | Audio a transcribir (obligatorio). |
+| `file` | — | Audio a transcribir (**único campo obligatorio**). |
 | `language` | `AUDIO_DEFAULT_LANGUAGE` (`es`) | ISO-639-1; `auto` fuerza autodetección. |
-| `model` | — | Override de modelo (el proveedor local lo devuelve en la respuesta; el modelo real se fija con `LOCAL_WHISPER_MODEL`). |
-| `provider` | `AUDIO_PROVIDER` | Proveedor a usar. |
+| `model` | `LOCAL_WHISPER_MODEL` (`base`) | Modelo del proveedor (el local lo devuelve en la respuesta). |
+| `provider` | `AUDIO_PROVIDER` (`local`) | Proveedor a usar. |
 | `verbose` | `false` | Incluye `segments[]` con marcas de tiempo. |
-| `preprocess` | *(ninguno)* | Preset (`raw`, `minimal`, `clean`, `noisy`) o `none`. |
+| `preprocess` | `none` | `none` o un preset (`raw`, `minimal`, `clean`, `noisy`). |
 
 Respuesta `200` (JSON): `id`, `provider`, `model`, `created`, `preprocess`,
 `text`, `language`, `language_probability`, `duration` y `segments[]`
@@ -194,6 +198,9 @@ curl -s -F file=@audio.ogg \
 cd audio_processing
 AUDIO_API_TOKEN=mi-token docker compose up --build
 ```
+
+El puerto del host se puede cambiar con `AUDIO_HOST_PORT` (por defecto `8000`);
+`dev.js` lo ajusta automáticamente si está ocupado.
 
 Módulos opcionales (imagen con extras):
 
