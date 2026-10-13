@@ -264,6 +264,30 @@ Conclusiones (son los defaults actuales: `small` + `vad=true` +
 4. **Coste**: `small` es ~3× más lento que `base` en CPU (~14-18 s vs ~5-7 s por clip de ~6 s).
    Si priorizas latencia, baja a `base`; si priorizas calidad, sube a `medium`/`large-v3-turbo`.
 
+### Notas de voz reales (español coloquial)
+
+Medido sobre una nota de voz real de WhatsApp (12 s, opus):
+
+| Configuración | WER |
+|---|---|
+| `small` (sin más) | 0.36 |
+| `small` + `preprocess=minimal` | 0.32 |
+| `small` + `preprocess=minimal` + `initial_prompt` | **0.05** |
+
+- **`initial_prompt` con el vocabulario del dominio es la palanca clave** (nombres,
+  jerga, palabras coloquiales). Pásalo como **lista separada por comas**.
+- **No** uses la frase esperada completa: Whisper la trata como texto previo,
+  "continúa" y **se salta el audio**. Lista de palabras, no párrafo.
+- `preprocess=minimal` (mono + resample + highpass + normalize) ayuda en audio de
+  teléfono (retumbe de baja frecuencia).
+
+```bash
+curl -s -F file=@nota.ogg \
+  -F preprocess=minimal \
+  -F 'initial_prompt=Mai, lavar trastes, aseo a esa cocina, ponerme a jartar' \
+  http://localhost:8001/transcribe
+```
+
 ## Pruebas
 
 ```bash

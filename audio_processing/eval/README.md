@@ -79,6 +79,10 @@ A/B sobre el set real (WER global, 6 clips × 3 condiciones):
 El **modelo manda**; el VAD **suma sobre un modelo bueno** (con `base` era neutro).
 Coste en CPU: `small` ≈ 3× `base` (~14-18 s vs ~5-7 s por clip de ~6 s).
 
+Para **notas de voz reales** (español coloquial), `initial_prompt` con el
+vocabulario del dominio es la palanca clave (baja el WER de 0.36 a 0.05 en una
+nota real). Ver la receta en el [README principal](../README.md).
+
 ## Limitaciones
 
 - Con voz sintética (español), los artefactos del TTS dominan y **ninguna variante

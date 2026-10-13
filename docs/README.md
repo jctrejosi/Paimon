@@ -12,6 +12,12 @@ decisiones y roadmap) ver [`../plans/`](../plans/README.md).
 | [`operations.md`](operations.md) | Operación común: puertos, tokens, logs, build y problemas típicos. |
 | [`roadmap.md`](roadmap.md) | Módulos previstos a futuro. |
 
+### Detalle técnico
+
+| Documento | Contenido |
+|-----------|-----------|
+| [`audio_processing/`](audio_processing/README.md) | **Algoritmo de transcripción** paso a paso, preprocesamiento modular y proveedores (con diagramas). |
+
 ## Arranque en 30 segundos
 
 ```bash

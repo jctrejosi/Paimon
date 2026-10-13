@@ -79,9 +79,13 @@ Desde variables de entorno o un `.env` (no versionado):
 | `AUDIO_PROVIDER` | `local` | Proveedor de transcripción por defecto. |
 | `AUDIO_MAX_UPLOAD_MB` | `25` | Tamaño máximo de subida. |
 | `AUDIO_DEFAULT_LANGUAGE` | `es` | Idioma si no se especifica (`auto` = autodetección). |
-| `LOCAL_WHISPER_MODEL` | `base` | Modelo: `tiny`/`base`/`small`/… |
+| `LOCAL_WHISPER_MODEL` | `small` | Modelo: `tiny`/`base`/`small`/`medium`/`large-v3-turbo`. |
 | `LOCAL_WHISPER_DEVICE` | `cpu` | Dispositivo. |
 | `LOCAL_WHISPER_COMPUTE_TYPE` | `int8` | Precisión (rápido en CPU). |
+| `LOCAL_WHISPER_VAD` | `true` | VAD (Silero) en la decodificación. |
+| `LOCAL_WHISPER_BEAM_SIZE` | `5` | Ancho de búsqueda (1 = más rápido). |
+| `LOCAL_WHISPER_CONDITION_ON_PREVIOUS_TEXT` | `false` | Condicionar al texto previo (False evita bucles). |
+| `LOCAL_WHISPER_INITIAL_PROMPT` | *(vacío)* | Vocabulario/contexto para sesgar (jerga, nombres). |
 | `WHISPER_MODEL_DIR` | `models` | Caché de pesos (volumen). |
 | `HF_TOKEN` | *(vacío)* | Solo para diarización `pyannote` (modelos *gated*). |
 
@@ -115,7 +119,12 @@ No descargan modelos ni usan red: usan un proveedor falso y audio sintético.
 ## Evaluación (WER)
 
 En `eval/` hay un banco que mide el efecto de cada preset con voz real
-(LibriSpeech) y ruido a 15/5 dB. Conclusión principal: **`clean` (cadena mínima +
-VAD) es el mejor preset** (WER global 0.082 vs 0.116 sin preprocesar); el **VAD** es
-lo que más aporta y el **denoise no debe activarse por defecto**. Detalle en
-[`../../audio_processing/eval/README.md`](../../audio_processing/eval/README.md).
+(LibriSpeech) y ruido a 15/5 dB. Conclusiones vigentes:
+
+- **`clean` (cadena mínima + VAD) es el mejor preset**; el **VAD** es lo que más
+  aporta en preprocesamiento y el **denoise no debe activarse por defecto**.
+- En el **motor**, el modelo es el factor dominante (`base`→`small` bajó el WER de
+  0.110 a 0.023 con VAD) y el **`initial_prompt`** con vocabulario es la palanca
+  clave en español coloquial. Detalle en
+  [`../audio_processing/transcription.md`](../audio_processing/transcription.md) y
+  [`../../audio_processing/eval/README.md`](../../audio_processing/eval/README.md).
