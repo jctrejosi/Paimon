@@ -51,6 +51,16 @@ app = FastAPI(
 )
 
 
+class ImageResponse(Response):
+    """Respuesta binaria por defecto (`response_format=image`).
+
+    Declararla como `response_class` hace que Swagger documente y descargue
+    `image/png` por defecto, en vez de intentar mostrar el PNG como JSON.
+    """
+
+    media_type = "image/png"
+
+
 @app.exception_handler(ProviderError)
 async def provider_error_handler(_: Request, exc: ProviderError) -> JSONResponse:
     return JSONResponse(
@@ -109,13 +119,38 @@ async def list_models() -> ModelsResponse:
     )
 
 
-@app.post("/remove-bg", response_model=None, dependencies=[Depends(require_token)])
+@app.post(
+    "/remove-bg",
+    response_model=None,
+    response_class=ImageResponse,
+    dependencies=[Depends(require_token)],
+    responses={
+        200: {
+            "description": (
+                "Imagen resultante (PNG/WebP) o JSON con `image_base64`, "
+                "según `response_format`."
+            ),
+            "content": {
+                "image/png": {},
+                "image/webp": {},
+                "application/json": {},
+            },
+        }
+    },
+)
 async def remove_bg(
     file: Annotated[UploadFile, File(description="Imagen a la que quitar el fondo.")],
     model: Annotated[
-        str | None,
-        Form(description="Modelo de rembg (u2net, isnet-general-use, birefnet-general...)."),
-    ] = None,
+        str,
+        Form(
+            description=(
+                "Modelo de rembg. Vacío = modelo por defecto "
+                f"({settings.local_rembg_model})."
+            ),
+            # Sin esto, Swagger UI rellena el campo con el literal "string".
+            json_schema_extra={"enum": ["", *sorted(SUPPORTED_MODELS)]},
+        ),
+    ] = "",
     alpha_matting: Annotated[
         bool, Form(description="Matting alfa: bordes más finos (más lento).")
     ] = settings.local_rembg_alpha_matting,
@@ -137,9 +172,13 @@ async def remove_bg(
     ] = "transparent",
     output_format: Annotated[Literal["png", "webp"], Form()] = settings.default_output_format,
     response_format: Annotated[Literal["image", "json"], Form()] = "image",
-    provider: Annotated[str, Form(description="Proveedor a usar.")] = (
-        settings.image_processing_provider
-    ),
+    provider: Annotated[
+        str,
+        Form(
+            description="Proveedor a usar.",
+            json_schema_extra={"enum": [cls.name for cls in PROVIDER_CLASSES]},
+        ),
+    ] = settings.image_processing_provider,
 ) -> Response:
     content = await read_image_upload(file)
     background_color = parse_background(background)
@@ -183,5 +222,7 @@ async def remove_bg(
         return JSONResponse(content=payload, headers=headers)
 
     extension = "webp" if result.mime_type == "image/webp" else "png"
-    headers["Content-Disposition"] = f'inline; filename="remove-bg.{extension}"'
+    # `attachment` hace que el navegador/Swagger descargue el archivo en vez de
+    # mostrarlo embebido; el nombre ya lleva la extensión correcta.
+    headers["Content-Disposition"] = f'attachment; filename="remove-bg.{extension}"'
     return Response(content=result.data, media_type=result.mime_type, headers=headers)

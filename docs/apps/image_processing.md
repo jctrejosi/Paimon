@@ -22,7 +22,8 @@ a través de fal, pero corriendo en la propia máquina.
 | `GET`  | `/models` | Modelos de `rembg` aceptados. |
 | `GET`  | `/` | Índice de endpoints. |
 
-Documentación interactiva en `/docs`.
+Documentación interactiva en `/docs`. En Swagger, `model` y `provider` son
+desplegables con los valores válidos; deja `model` vacío para usar el default.
 
 ## `POST /remove-bg`
 
@@ -38,8 +39,9 @@ Documentación interactiva en `/docs`.
 | `provider` | `local` | Proveedor. |
 
 Respuesta `image`: la imagen resultante, con cabeceras `X-Provider`, `X-Model` y
-`X-Elapsed-Ms`. Respuesta `json`: metadatos (`width`, `height`, `elapsed_ms`, …)
-más `image_base64`.
+`X-Elapsed-Ms`. Se envía con `Content-Disposition: attachment; filename="remove-bg.png"`
+(o `.webp`), de modo que el navegador y el botón *Download* de Swagger la descargan.
+Respuesta `json`: metadatos (`width`, `height`, `elapsed_ms`, …) más `image_base64`.
 
 ## Modelos
 

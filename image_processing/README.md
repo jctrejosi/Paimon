@@ -18,7 +18,9 @@ de fal, pero corriendo en la propia máquina, sin nube ni credenciales.
 | `GET` | `/models` | Modelos de `rembg` aceptados. |
 | `GET` | `/` | Índice de endpoints (fuera de OpenAPI). |
 
-Documentación interactiva en `/docs`.
+Documentación interactiva en `/docs`. En Swagger, `model` y `provider` son
+**desplegables** con los valores válidos; deja `model` vacío para usar el modelo
+por defecto.
 
 ### `POST /remove-bg`
 
@@ -27,7 +29,7 @@ Campos (`multipart/form-data`):
 | Campo | Default | Uso |
 |---|---|---|
 | `file` | — | Imagen (obligatorio). |
-| `model` | `isnet-general-use` | `u2net`, `isnet-general-use`, `birefnet-general`, `u2net_human_seg`, … |
+| `model` | `isnet-general-use` | `u2net`, `isnet-general-use`, `birefnet-general`, `u2net_human_seg`, … Vacío = modelo por defecto. |
 | `alpha_matting` | `false` | Bordes más finos (más lento). |
 | `alpha_matting_foreground_threshold` | `240` | Umbral de primer plano. |
 | `alpha_matting_background_threshold` | `10` | Umbral de fondo. |
@@ -39,7 +41,9 @@ Campos (`multipart/form-data`):
 | `provider` | `local` | Proveedor a usar. |
 
 Respuesta `response_format=image`: la imagen resultante, con cabeceras
-`X-Provider`, `X-Model` y `X-Elapsed-Ms`.
+`X-Provider`, `X-Model` y `X-Elapsed-Ms`. Se envía como **descarga**
+(`Content-Disposition: attachment; filename="remove-bg.png"` o `.webp`), así que
+el navegador y el botón *Download* de Swagger la guardan como archivo.
 
 Respuesta `response_format=json`:
 
@@ -60,7 +64,10 @@ Respuesta `response_format=json`:
 ### Ejemplos
 
 ```bash
-# PNG transparente
+# PNG transparente (descarga como remove-bg.png)
+curl -s -OJ -F file=@foto.jpg http://127.0.0.1:8002/remove-bg
+
+# ...o elige tú el nombre
 curl -s -F file=@foto.jpg http://127.0.0.1:8002/remove-bg -o sin-fondo.png
 
 # Fondo blanco, WebP

@@ -60,10 +60,27 @@ def test_remove_bg_returns_png(client: TestClient, png: bytes) -> None:
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"] == "image/png"
     assert resp.headers["x-provider"] == "local"
+    # Debe descargarse como archivo, no mostrarse embebido.
+    assert resp.headers["content-disposition"] == 'attachment; filename="remove-bg.png"'
     assert resp.content.startswith(b"\x89PNG")
     # La imagen devuelta tiene canal alfa.
     with Image.open(io.BytesIO(resp.content)) as image:
         assert image.mode in {"RGBA", "LA"}
+
+
+def test_remove_bg_webp_disposition(client: TestClient, png: bytes) -> None:
+    resp = client.post("/remove-bg", files=_image(png), data={"output_format": "webp"})
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-disposition"] == 'attachment; filename="remove-bg.webp"'
+
+
+def test_openapi_documents_binary_response(client: TestClient) -> None:
+    schema = client.get("/openapi.json").json()
+    content = schema["paths"]["/remove-bg"]["post"]["responses"]["200"]["content"]
+    # El primer tipo manda en Swagger: debe ser la imagen, no JSON.
+    assert next(iter(content)) == "image/png"
+    assert "image/webp" in content
+    assert "application/json" in content
 
 
 def test_remove_bg_json(client: TestClient, png: bytes) -> None:
@@ -213,6 +230,20 @@ def test_remove_bg_animated_gif_uses_first_frame(client: TestClient) -> None:
         "/remove-bg", files={"file": ("animado.gif", buffer.getvalue(), "image/gif")}
     )
     assert resp.status_code == 200, resp.text
+
+
+def test_remove_bg_empty_model_uses_default(client: TestClient, png: bytes) -> None:
+    # Swagger envía el campo vacío cuando no se elige modelo.
+    resp = client.post("/remove-bg", files=_image(png), data={"model": ""})
+    assert resp.status_code == 200, resp.text
+
+
+def test_openapi_exposes_model_enum(client: TestClient) -> None:
+    schema = client.get("/openapi.json").json()
+    body = schema["components"]["schemas"]["Body_remove_bg_remove_bg_post"]
+    enum = body["properties"]["model"]["enum"]
+    assert "" in enum
+    assert "isnet-general-use" in enum
 
 
 def test_remove_bg_invalid_image(client: TestClient) -> None:
