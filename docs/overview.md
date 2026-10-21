@@ -30,9 +30,12 @@ Paimon/
 │   ├── api/                  #   código de la API (FastAPI) + tests
 │   ├── eval/                 #   banco de evaluación de WER
 │   └── Dockerfile / docker-compose.yml
-└── image_generator/          # app: generación y edición de imágenes
-    ├── api/                  #   fachada HTTP (FastAPI) + worker + tests
-    ├── ComfyUI/              #   submódulo: backend local de difusión
+├── image_generator/          # app: generación y edición de imágenes
+│   ├── api/                  #   fachada HTTP (FastAPI) + worker + tests
+│   ├── ComfyUI/              #   submódulo: backend local de difusión
+│   └── Dockerfile / docker-compose.yml
+└── image_processing/         # app: procesamiento de imágenes (quita-fondo)
+    ├── api/                  #   código de la API (FastAPI) + tests
     └── Dockerfile / docker-compose.yml
 ```
 
@@ -45,9 +48,11 @@ Paimon/
 |-----|---------|----------|--------------------|
 | **audio_processing** | `audio_processing/` | Transcripción (voz→texto) y preprocesamiento modular de audio. | API `8000` |
 | **image_generator** | `image_generator/` | Generación/edición de imágenes (ComfyUI local o proveedores cloud). | API `8000`, ComfyUI `8188`, Redis `6379` |
+| **image_processing** | `image_processing/` | Procesamiento de imágenes local (quita-fondo). | API `8002` (`8003` si está ocupado) |
 
-Detalle en [`apps/audio_processing.md`](apps/audio_processing.md) y
-[`apps/image_generator.md`](apps/image_generator.md).
+Detalle en [`apps/audio_processing.md`](apps/audio_processing.md),
+[`apps/image_generator.md`](apps/image_generator.md) y
+[`apps/image_processing.md`](apps/image_processing.md).
 
 ## Requisitos
 

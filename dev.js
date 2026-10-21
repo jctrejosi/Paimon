@@ -6,22 +6,23 @@
  * Each app is a `docker compose` stack in its own folder, so this launcher
  * delegates to Compose (no venvs, no PIDs: Docker gestiona los contenedores).
  *
- *   node dev.js                 # levanta los dos: audio_processing + image_generator
+ *   node dev.js                 # levanta los tres: audio + image + processing
  *   node dev.js --audio         # solo audio_processing
  *   node dev.js --image         # solo image_generator
- *   node dev.js --all           # explícito: los dos
+ *   node dev.js --processing    # solo image_processing (alias: --removebg)
+ *   node dev.js --all           # explícito: los tres
  *   node dev.js --build         # (re)construye las imágenes al levantar
  *   node dev.js --logs [flags]  # sigue los logs de los seleccionados (Ctrl+C sale)
  *   node dev.js --stop [flags]  # detiene los seleccionados (o todos)
  *   node dev.js --help
  *
  * PUERTOS
- *   Las dos APIs escuchan internamente en :8000. Al levantar ambos, la segunda
- *   se publica en el siguiente puerto libre (:8001), saltando los puertos ya
- *   ocupados del host. Se puede fijar con las variables AUDIO_HOST_PORT /
- *   IMAGE_API_HOST_PORT. Si un contenedor ya está en marcha, se conserva su
- *   puerto (re-ejecutar no mueve las URLs). Los demás puertos no cambian:
- *   ComfyUI :8188 y Redis :6379 (image_generator), worker :9100.
+ *   Cada API escucha internamente en :8000. Al levantar varias, se publican en
+ *   puertos distintos del host (el siguiente libre) para que no choquen; los
+ *   puertos ya ocupados se saltan. Se fijan con AUDIO_HOST_PORT /
+ *   IMAGE_API_HOST_PORT / IMAGE_PROCESSING_HOST_PORT. Si un contenedor ya está
+ *   en marcha, se conserva su puerto (re-ejecutar no mueve las URLs). Los demás
+ *   puertos no cambian: ComfyUI :8188 y Redis :6379 (image_generator), worker :9100.
  *
  * Logs: logs/<app>.log (salida de `docker compose`).
  */
@@ -68,14 +69,37 @@ const PROJECTS = [
     color: "\x1b[32m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
-      ["Swagger", `http://localhost:${p}/docs`],
-      ["OpenAPI", `http://localhost:${p}/openapi.json`],
+      ["docs", `http://localhost:${p}/docs`],
       ["ComfyUI", "http://localhost:8188"],
+    ],
+  },
+  {
+    name: "processing",
+    label: "image_processing",
+    dir: "image_processing",
+    container: "paimon-image-processing",
+    portEnv: "IMAGE_PROCESSING_HOST_PORT",
+    port: 8002,
+    color: "\x1b[35m",
+    endpoints: (p) => [
+      ["API", `http://localhost:${p}`],
+      ["docs", `http://localhost:${p}/docs`],
+      ["remove-bg", `POST http://localhost:${p}/remove-bg`],
     ],
   },
 ];
 
 const PROJECT_NAMES = new Set(PROJECTS.map((p) => p.name));
+
+// Alias de selección: nombres alternativos que resuelven a un app del catálogo.
+// Sirven para que el flag sea evidente por funcionalidad y no solo por carpeta.
+const PROJECT_ALIASES = {
+  removebg: "processing",
+  "remove-bg": "processing",
+  remove_bg: "processing",
+  "image-processing": "processing",
+  image_processing: "processing",
+};
 
 // Puertos fijos que no deben asignarse por reasignación automática.
 const RESERVED_PORTS = [8188, 6379, 9100];
@@ -87,6 +111,7 @@ const VALID_FLAGS = new Set([
   "--stop",
   "--help",
   ...PROJECTS.map((p) => `--${p.name}`),
+  ...Object.keys(PROJECT_ALIASES).map((a) => `--${a}`),
 ]);
 
 function color(project) {
@@ -95,8 +120,9 @@ function color(project) {
 
 /**
  * Apps elegidas por los flags. `null` ⇒ todas (sin flags de selección).
- *   --all / sin flags   → los dos
+ *   --all / sin flags   → los tres
  *   --audio --image     → esos (combinables)
+ *   --removebg          → alias de --processing
  * Los flags de modo (--build, --stop, ...) y desconocidos se ignoran aquí.
  */
 function selectProjects(argv) {
@@ -107,8 +133,8 @@ function selectProjects(argv) {
     if (f === "all") {
       PROJECTS.forEach((p) => chosen.add(p.name));
       any = true;
-    } else if (PROJECT_NAMES.has(f)) {
-      chosen.add(f);
+    } else if (PROJECT_NAMES.has(f) || PROJECT_ALIASES[f]) {
+      chosen.add(PROJECT_ALIASES[f] ?? f);
       any = true;
     }
   }
@@ -132,7 +158,7 @@ function preferredPort(project) {
 }
 
 /**
- * Asigna a cada app un puerto de host único: evita choques entre las dos APIs,
+ * Asigna a cada app un puerto de host único: evita choques entre las APIs,
  * respeta los `RESERVED_PORTS` y salta los puertos ya ocupados en el host.
  */
 async function assignPorts(projects) {
@@ -311,10 +337,12 @@ function printUrls(projects, ports) {
 
 function printCommands() {
   const rows = [
-    ["node dev.js", "levanta los dos aplicativos"],
+    ["node dev.js", "levanta los tres aplicativos"],
     ["node dev.js --audio", "solo audio_processing"],
     ["node dev.js --image", "solo image_generator"],
-    ["node dev.js --all", "los dos (explícito)"],
+    ["node dev.js --processing", "solo image_processing (quita-fondo)"],
+    ["node dev.js --removebg", "alias de --processing"],
+    ["node dev.js --all", "los tres (explícito)"],
     ["node dev.js --build", "reconstruye las imágenes al levantar"],
     ["node dev.js --logs [flags]", "sigue los logs de los seleccionados"],
     ["node dev.js --stop [flags]", "detiene los seleccionados (o todos)"],
@@ -332,10 +360,12 @@ function printHelp() {
   out.push("USO");
   out.push("  node dev.js [flags]");
   out.push("");
-  out.push("SELECCIÓN (sin flags levanta los dos)");
+  out.push("SELECCIÓN (sin flags levanta los tres)");
   out.push("  --audio            solo audio_processing   (API :8000)");
   out.push("  --image            solo image_generator    (API :8000 + ComfyUI :8188 + Redis :6379)");
-  out.push("  --all              los dos (explícito)");
+  out.push("  --processing       solo image_processing   (API :8002, POST /remove-bg)");
+  out.push("                       alias: --removebg, --remove-bg, --image-processing");
+  out.push("  --all              los tres (explícito)");
   out.push("");
   out.push("MODOS");
   out.push("  --build            (re)construye las imágenes al levantar");
@@ -344,15 +374,15 @@ function printHelp() {
   out.push("  --help             esta ayuda");
   out.push("");
   out.push("PUERTOS");
-  out.push("  Ambas APIs usan :8000 internamente. Al levantar las dos, la segunda se");
-  out.push("  publica en el siguiente puerto libre (:8001), saltando los ya ocupados");
-  out.push("  en el host. Fijar con AUDIO_HOST_PORT e IMAGE_API_HOST_PORT.");
+  out.push("  Cada API usa :8000 internamente. Al levantar varias, se publican en");
+  out.push("  puertos distintos del host (el siguiente libre), saltando los ya ocupados.");
+  out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT e IMAGE_PROCESSING_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");
-  out.push("  node dev.js                    → audio_processing + image_generator");
+  out.push("  node dev.js                    → audio_processing + image_generator + image_processing");
   out.push("  node dev.js --audio --build    → solo audio, reconstruyendo la imagen");
   out.push("  node dev.js --logs --image     → sigue los logs de image_generator");
-  out.push("  node dev.js --stop             → detiene los dos");
+  out.push("  node dev.js --stop             → detiene los tres");
   out.push("");
   out.push("Logs: logs/<app>.log");
   out.push("Un flag desconocido no ejecuta nada (aborta; usa --help para ver las opciones).");
@@ -380,7 +410,7 @@ async function main() {
 
   const selected = selectProjects(argv);
   const projects = selected ?? PROJECTS;
-  const label = selected ? selected.map((p) => p.label).join(" + ") : "los dos";
+  const label = selected ? selected.map((p) => p.label).join(" + ") : "los tres";
 
   if (!checkDocker()) process.exit(1);
 

@@ -1,0 +1,21 @@
+# Entorno virtual local (no pertenece a la imagen)
+.venv/
+api/.venv/
+
+# Pesos de modelos: se montan como volumen, no se hornean
+api/models/
+
+# Configuración local (.env puede contener el token de API)
+api/.env
+
+# Basura de Python
+**/__pycache__/
+**/*.pyc
+
+# Pruebas y cachés
+api/tests/
+.pytest_cache/
+**/.pytest_cache/
+
+# Logs
+*.log

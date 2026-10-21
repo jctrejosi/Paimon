@@ -1,0 +1,14 @@
+# API HTTP
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# Motor local de quita-fondo (ONNX Runtime, CPU) + tratamiento de imagen.
+rembg[cpu]
+onnxruntime
+# Tratamiento de imagen. `pillow-heif` añade HEIC/HEIF (fotos de iPhone);
+# el resto de formatos (PNG, JPEG, WebP, AVIF, TIFF, GIF, BMP...) los lee Pillow.
+pillow
+pillow-heif
+numpy

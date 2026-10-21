@@ -8,6 +8,9 @@ Lista de módulos previstos a futuro. Cada uno sería una herramienta independie
 Generar imágenes desde texto, eliminar fondos, ampliar resolución, restaurar
 fotografías, quitar objetos y crear variaciones. Modelos como Stable Diffusion y FLUX.
 
+> Estado: `image_generator/` cubre la generación; `image_processing/` ya implementa
+> **quitar el fondo** (primera función). Quedan upscale, restauración, inpainting, etc.
+
 ## 2. Procesamiento de audio
 `audio_processing/`
 

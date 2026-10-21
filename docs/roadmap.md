@@ -1,14 +1,16 @@
 # Roadmap
 
 Paimon se concibe como una colección de aplicativos independientes. Hoy existen
-`audio_processing` e `image_generator`; el resto son ideas para el futuro.
+`audio_processing` (transcripción + preprocesamiento), `image_generator`
+(generación/edición) e `image_processing` (quita-fondo); el resto son ideas para el
+futuro.
 
 El listado completo y su descripción están en
 [`../plans/apps_future.md`](../plans/apps_future.md). Resumen:
 
 | # | Módulo | Carpetas propuestas |
 |---|--------|---------------------|
-| 1 | Generación y edición de imágenes | `image_generation/` · `image_processing/` |
+| 1 | Generación y edición de imágenes | `image_generation/` · `image_processing/` (quita-fondo ya implementado) |
 | 2 | Procesamiento de audio | `audio_processing/` |
 | 3 | Procesamiento de vídeo | `video_processing/` · `video_generation/` |
 | 4 | Reconocimiento y síntesis de voz | `speech_to_text/` · `text_to_speech/` |

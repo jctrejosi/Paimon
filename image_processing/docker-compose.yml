@@ -1,0 +1,42 @@
+name: paimon-image-processing
+
+services:
+  image-processing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUID: "${PUID:-1001}"
+        PGID: "${PGID:-1001}"
+    image: paimon-image-processing:local
+    container_name: paimon-image-processing
+    # Solo en loopback: sin autenticación por defecto; no exponer a la red.
+    ports:
+      - "127.0.0.1:${IMAGE_PROCESSING_HOST_PORT:-8002}:8000"
+    # Archivos/modelos con el UID del usuario del host (evita root-owned).
+    user: "${PUID:-1001}:${PGID:-1001}"
+    environment:
+      HOME: /tmp
+      # Caché de modelos dentro del volumen para no re-descargar.
+      U2NET_HOME: /models
+      IMAGE_PROCESSING_PROVIDER: "${IMAGE_PROCESSING_PROVIDER:-local}"
+      IMAGE_PROCESSING_API_TOKEN: "${IMAGE_PROCESSING_API_TOKEN:-}"
+      IMAGE_PROCESSING_MAX_UPLOAD_MB: "${IMAGE_PROCESSING_MAX_UPLOAD_MB:-20}"
+      LOCAL_REMBG_MODEL: "${LOCAL_REMBG_MODEL:-isnet-general-use}"
+      # Limitar hilos/arena de ONNX reduce el pico de memoria en CPU.
+      LOCAL_REMBG_INTRA_OP_THREADS: "${LOCAL_REMBG_INTRA_OP_THREADS:-2}"
+      LOCAL_REMBG_INTER_OP_THREADS: "${LOCAL_REMBG_INTER_OP_THREADS:-1}"
+    volumes:
+      # Pesos del modelo (volumen de datos, no se hornean).
+      - ./api/models:/models
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped

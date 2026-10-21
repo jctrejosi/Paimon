@@ -30,3 +30,13 @@ audio_processing/eval/models/
 
 # Configuración local de la API de transcripción (contiene credenciales)
 audio_processing/api/.env
+
+# Configuración local de la API de procesamiento de imágenes (credenciales)
+image_processing/api/.env
+
+# Pesos de modelos de quita-fondo (volumen de datos, no versionar)
+image_processing/api/models/*
+!image_processing/api/models/.gitkeep
+
+# Repos externos clonados para revisión (no versionar)
+/reference/
