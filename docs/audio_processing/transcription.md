@@ -212,6 +212,27 @@ Medido en el host (sin GPU), clip de ~6 s, `compute_type=int8`:
 (`turbo` superó los 10 min). Cuando haya GPU o proveedor cloud, se activan por la
 misma interfaz.
 
+## Errores comunes
+
+| Código | Cuándo |
+|--------|--------|
+| `401` | `AUDIO_API_TOKEN` configurado y el Bearer falta o no coincide. |
+| `404` | Proveedor desconocido (`provider=...`). |
+| `400` | Audio vacío, no decodificable, modelo inválido o proveedor no configurado. |
+| `413` | Supera `AUDIO_MAX_UPLOAD_MB`. |
+| `415` | Extensión no soportada. |
+| `422` | Falta `file` o un parámetro no cumple el esquema (p. ej. `sample_rate`). |
+| `502` | Fallo del motor al transcribir. |
+
+Errores del motor que **no** son 500: un modelo desconocido devuelve `400`
+indicando los válidos (`tiny`, `base`, `small`, `medium`, `large-v3`,
+`large-v3-turbo`).
+
+> **Swagger**: si el campo `model` aparece relleno con `string`, es un valor de
+ejemplo cacheado por el navegador. Recarga `/docs` (o pulsa *Try it out* de
+nuevo); con la versión actual el default es `small` y `whisper-1` se acepta como
+"modelo por defecto".
+
 ## Endpoint compatible con OpenAI
 
 `POST /v1/audio/transcriptions` (`main.py`) reutiliza el mismo proveedor y

@@ -46,12 +46,20 @@ class LocalWhisperProvider(TranscriptionProvider):
                 status_code=500,
             ) from exc
 
-        return WhisperModel(
-            name,
-            device=self.settings.local_whisper_device,
-            compute_type=self.settings.local_whisper_compute_type,
-            download_root=str(self.settings.whisper_model_dir),
-        )
+        try:
+            return WhisperModel(
+                name,
+                device=self.settings.local_whisper_device,
+                compute_type=self.settings.local_whisper_compute_type,
+                download_root=str(self.settings.whisper_model_dir),
+            )
+        except ValueError as exc:
+            raise ProviderError(
+                f"Modelo de transcripción inválido: '{name}'. Usa uno de: "
+                "tiny, base, small, medium, large-v3, large-v3-turbo.",
+                provider=self.name,
+                status_code=400,
+            ) from exc
 
     def _model_for(self, name: str):
         if name not in self._models:

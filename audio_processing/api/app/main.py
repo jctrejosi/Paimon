@@ -8,6 +8,7 @@ WhatsApp es otra herramienta y no se implementa aquí.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -77,12 +78,25 @@ async def validation_error_handler(_: Request, exc: RequestValidationError) -> J
 
 
 def resolve_language(language: str | None) -> str | None:
-    """Aplica el idioma por defecto; `auto` fuerza autodetección (None)."""
-    if language is None:
+    """Aplica el idioma por defecto; `auto` fuerza autodetección (None).
+
+    Un valor vacío (p. ej. Swagger sin rellenar) se trata como no especificado.
+    Un código inválido se rechaza con 400 (antes fallaba dentro del motor con 502).
+    """
+    if not language:
         language = settings.audio_default_language
-    if language and language.lower() in {"auto", ""}:
+    if not language or language.strip().lower() == "auto":
         return None
-    return language
+    code = language.strip().lower()
+    if not re.fullmatch(r"[a-z]{2,3}", code):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Idioma inválido: '{language}'. Usa un código ISO-639-1 "
+                "(p. ej. 'es') o 'auto'."
+            ),
+        )
+    return code
 
 
 def to_response(result: TranscriptResult, preprocess: str | None = None) -> TranscribeResponse:
@@ -208,8 +222,13 @@ async def transcribe(
 @app.post("/v1/audio/transcriptions", dependencies=[Depends(require_token)])
 async def openai_transcriptions(
     file: Annotated[UploadFile, File(description="Archivo de audio (compatible OpenAI).")],
-    model: Annotated[str | None, Form()] = None,
-    language: Annotated[str | None, Form()] = None,
+    model: Annotated[
+        str,
+        Form(description="Modelo local; 'whisper-1' (OpenAI) usa el modelo por defecto."),
+    ] = settings.local_whisper_model,
+    language: Annotated[
+        str, Form(description="ISO-639-1 (p. ej. 'es') o 'auto'.")
+    ] = settings.audio_default_language or "auto",
     response_format: Annotated[str, Form()] = "json",
     prompt: Annotated[str | None, Form()] = None,
     temperature: Annotated[float, Form()] = 0.0,
@@ -233,7 +252,8 @@ async def openai_transcriptions(
         filename=file.filename,
         content_type=file.content_type,
         language=resolve_language(language),
-        model=model,
+        # Compatibilidad OpenAI: 'whisper-1' (o vacío) → modelo por defecto.
+        model=None if not model or model == "whisper-1" else model,
         verbose=response_format == "verbose_json",
     )
     result = await manager.get(settings.audio_provider).transcribe(request)

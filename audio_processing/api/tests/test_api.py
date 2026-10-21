@@ -188,3 +188,53 @@ def test_local_whisper_passes_decode_params() -> None:
     )
     assert model.calls[1]["vad_filter"] is False
     assert model.calls[1]["beam_size"] == 1
+
+
+def test_invalid_model_raises_clear_error() -> None:
+    import pytest
+
+    from app.config import Settings
+    from app.providers.base import ProviderError
+    from app.providers.local_whisper import LocalWhisperProvider
+
+    provider = LocalWhisperProvider(Settings())
+    with pytest.raises(ProviderError) as excinfo:
+        provider._load_model("modelo-inexistente")
+    assert excinfo.value.status_code == 400
+    assert "inválido" in str(excinfo.value)
+
+
+def test_resolve_language_empty_uses_default() -> None:
+    from app.config import Settings
+    from app.main import resolve_language
+
+    assert resolve_language("") == Settings().audio_default_language
+    assert resolve_language("auto") is None
+    assert resolve_language("en") == "en"
+
+
+def test_openai_accepts_whisper_alias(client: TestClient) -> None:
+    resp = client.post(
+        "/v1/audio/transcriptions", files=_audio(), data={"model": "whisper-1"}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["text"] == "hola mundo"
+
+
+def test_resolve_language_invalid_raises_400() -> None:
+    import pytest
+    from fastapi import HTTPException
+
+    from app.main import resolve_language
+
+    with pytest.raises(HTTPException) as excinfo:
+        resolve_language("string")
+    assert excinfo.value.status_code == 400
+
+
+def test_openai_invalid_language_returns_400(client: TestClient) -> None:
+    resp = client.post(
+        "/v1/audio/transcriptions", files=_audio(), data={"language": "string"}
+    )
+    assert resp.status_code == 400, resp.text
+    assert "Idioma inválido" in resp.json()["detail"]
