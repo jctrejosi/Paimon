@@ -1,0 +1,35 @@
+name: paimon-audio-generator
+
+services:
+  audio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUID: "${PUID:-1001}"
+        PGID: "${PGID:-1001}"
+    image: paimon-audio-generator:local
+    container_name: paimon-audio-generator
+    # Solo en loopback: sin autenticación por defecto; no exponer a la red.
+    # El puerto del host es configurable (dev.js lo ajusta si hay conflicto).
+    ports:
+      - "127.0.0.1:${AUDIO_GEN_HOST_PORT:-8200}:8000"
+    user: "${PUID:-1001}:${PGID:-1001}"
+    # Claves de API compartidas (API_KEYS, API_AUTH_REQUIRED, API_PUBLIC_DOCS):
+    # viven en un único `.env` en la raíz de Paimon.
+    env_file:
+      - ../.env
+    environment:
+      HOME: /tmp
+      # Caché de pesos de Hugging Face dentro del volumen (no re-descargar).
+      HF_HOME: /models/hf
+      VOICES_DIR: /voices
+      TTS_PROVIDER: "${TTS_PROVIDER:-kokoro}"
+      KOKORO_LANG: "${KOKORO_LANG:-e}"
+      KOKORO_DEFAULT_VOICE: "${KOKORO_DEFAULT_VOICE:-ef_dora}"
+      TTS_API_TOKEN: "${TTS_API_TOKEN:-}"
+    volumes:
+      # Pesos del modelo y voces clonadas (volúmenes de datos, no se hornean).
+      - ./api/models:/models
+      - ./api/voices:/voices
+    restart: unless-stopped

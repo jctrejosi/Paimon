@@ -31,6 +31,15 @@ audio_processing/eval/models/
 # Configuración local de la API de transcripción (contiene credenciales)
 audio_processing/api/.env
 
+# Pesos de modelos y voces de síntesis de voz (volúmenes de datos, no versionar)
+audio_generator/api/models/*
+!audio_generator/api/models/.gitkeep
+audio_generator/api/voices/*
+!audio_generator/api/voices/.gitkeep
+
+# Configuración local de la API de síntesis (contiene credenciales)
+audio_generator/api/.env
+
 # Configuración local de la API de procesamiento de imágenes (credenciales)
 image_processing/api/.env
 

@@ -1,0 +1,9 @@
+# API HTTP
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# Motor local de síntesis (CPU).
+kokoro>=0.9.4
+numpy

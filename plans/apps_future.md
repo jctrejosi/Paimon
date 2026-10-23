@@ -29,6 +29,10 @@ detectar escenas y generar clips mediante IA.
 Transcribir grabaciones, identificar hablantes, generar voces y convertir audio entre
 idiomas. Explorar Whisper y Piper.
 
+> Estado: `audio_processing/` cubre el reconocimiento (Whisper). La **síntesis**
+> (texto→voz) está planificada como `audio_generator/` con **CosyVoice** — ver
+> [`audio_generator.md`](audio_generator.md).
+
 ## 5. Procesamiento de documentos
 `document_processing/`
 

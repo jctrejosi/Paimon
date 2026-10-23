@@ -1,0 +1,19 @@
+# Entorno virtual local (no versionar)
+.venv/
+
+# Pesos de modelos y voces clonadas (volúmenes de datos, no versionar)
+api/models/*
+!api/models/.gitkeep
+api/voices/*
+!api/voices/.gitkeep
+
+# Configuración local (contiene credenciales)
+api/.env
+
+# Basura de Python
+**/__pycache__/
+**/*.pyc
+
+# Pruebas y cachés
+.pytest_cache/
+.ruff_cache/

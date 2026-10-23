@@ -13,6 +13,8 @@ decisiones y roadmap) ver [`../plans/`](../plans/README.md).
 | [`operations.md`](operations.md) | Operación común: puertos, tokens, logs, build y problemas típicos. |
 | [`roadmap.md`](roadmap.md) | Módulos previstos a futuro. |
 | [`reference/artcraft.md`](reference/artcraft.md) | Revisión del repo público ArtCraft (referencia para `image_processor`). |
+| [`reference/cosyvoice.md`](reference/cosyvoice.md) | Revisión del repo público CosyVoice (referencia para `audio_generator`). |
+| [`reference/tts_alternatives.md`](reference/tts_alternatives.md) | Comparativa de motores TTS locales (Kokoro, Piper, XTTS, F5, CosyVoice). |
 
 ### Detalle técnico
 

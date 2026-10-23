@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Pruebas (incluye TestClient, que usa httpx).
+pytest
+httpx

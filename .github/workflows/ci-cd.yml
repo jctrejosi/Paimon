@@ -1,0 +1,68 @@
+name: CI/CD
+
+# CI valida cada push a dev y los PR. El despliegue solo corre en push/manual
+# sobre dev, después de que CI pase.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    name: Validación
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sintaxis Python de las APIs
+        run: |
+          find . -name api_key_auth.py -not -path '*/.venv/*' -print0 | xargs -0 python -m py_compile
+          python -m py_compile \
+            audio_processing/api/app/main.py \
+            audio_processing/api/app/deps.py \
+            image_generator/api/app/main.py \
+            image_processing/api/app/main.py \
+            image_processing/api/app/deps.py
+
+      - name: Sintaxis del script de despliegue
+        run: bash -n deploy/deploy.sh
+
+      - name: Validar los tres compose
+        run: |
+          touch .env
+          for d in audio_processing image_generator image_processing; do
+            docker compose --project-directory "$d" -f "$d/docker-compose.yml" config --quiet
+          done
+
+  deploy:
+    name: Desplegar en el VPS
+    needs: ci
+    if: >-
+      needs.ci.result == 'success' &&
+      github.ref == 'refs/heads/dev' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: [self-hosted, linux, mercaldas]
+    timeout-minutes: 120
+    concurrency:
+      group: deploy-paimon
+      cancel-in-progress: false
+    steps:
+      - name: Desplegar commit
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/mnt/c/Users/Desarrolo4/Documents/paimon' }}
+          TARGET_SHA: ${{ github.sha }}
+        run: bash "$DEPLOY_PATH/deploy/deploy.sh" "$TARGET_SHA"

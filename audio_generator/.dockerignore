@@ -1,0 +1,20 @@
+# Entorno virtual local (no pertenece a la imagen)
+.venv/
+
+# Pesos de modelos y voces: se montan como volúmenes, no se hornean
+api/models/
+api/voices/
+
+# Configuración local (contiene credenciales)
+api/.env
+
+# Basura de Python
+**/__pycache__/
+**/*.pyc
+
+# Pruebas y cachés
+api/tests/
+.pytest_cache/
+
+# Logs
+*.log

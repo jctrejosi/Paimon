@@ -13,7 +13,7 @@ El listado completo y su descripción están en
 | 1 | Generación y edición de imágenes | `image_generation/` · `image_processing/` (quita-fondo ya implementado) |
 | 2 | Procesamiento de audio | `audio_processing/` |
 | 3 | Procesamiento de vídeo | `video_processing/` · `video_generation/` |
-| 4 | Reconocimiento y síntesis de voz | `speech_to_text/` · `text_to_speech/` |
+| 4 | Reconocimiento y síntesis de voz | `speech_to_text/` · `text_to_speech/` → **síntesis planificada como `audio_generator/`** |
 | 5 | Procesamiento de documentos | `document_processing/` |
 | 6 | Búsqueda semántica | `semantic_search/` · `embeddings/` |
 | 7 | Procesamiento de texto con IA | `text_processing/` |
@@ -27,6 +27,7 @@ El listado completo y su descripción están en
 
 - [`../plans/audio_processing.md`](../plans/audio_processing.md) — API de transcripción (implementado).
 - [`../plans/audio_processing_pipeline.md`](../plans/audio_processing_pipeline.md) — pipeline de preprocesamiento (implementado).
+- [`../plans/audio_generator.md`](../plans/audio_generator.md) — API de síntesis y clonación de voz (en planificación; CosyVoice).
 - [`../plans/apps_future.md`](../plans/apps_future.md) — catálogo de ideas.
 
 ## Cómo añadir un aplicativo
