@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import metrics
+from .api_key_auth import APIKeyMiddleware, auth_required, is_valid_token
 from .config import get_settings
 from .jobs import TERMINAL_STATUSES, JobManager, JobRunner, build_backends
 from .providers.base import ProviderError
@@ -71,6 +72,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(APIKeyMiddleware)
+
 
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
@@ -99,27 +102,25 @@ async def record_http_metrics(request: Request, call_next):
 
 
 def require_token(authorization: str | None = Header(default=None)) -> None:
-    """Exige `Authorization: Bearer <token>` cuando hay token configurado."""
-    expected = settings.image_api_token
-    if not expected:
+    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
+    if not auth_required():
         return
     scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or token != expected:
+    if scheme.lower() != "bearer" or not is_valid_token(token.strip()):
         raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
 
 
 def _sse_authorized(request: Request, authorization: str | None) -> bool:
-    """Para SSE se admite el token por cabecera o por `?token=`.
+    """Para SSE se admite la clave por cabecera o por `?token=`.
 
     `EventSource` del navegador no permite cabeceras personalizadas.
     """
-    expected = settings.image_api_token
-    if not expected:
+    if not auth_required():
         return True
     scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() == "bearer" and token == expected:
+    if scheme.lower() == "bearer" and is_valid_token(token.strip()):
         return True
-    return request.query_params.get("token") == expected
+    return is_valid_token(request.query_params.get("token", ""))
 
 
 @app.exception_handler(ProviderError)

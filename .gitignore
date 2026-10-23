@@ -40,3 +40,6 @@ image_processing/api/models/*
 
 # Repos externos clonados para revisión (no versionar)
 /reference/
+
+# Secretos del proyecto (API_KEYS compartidas por los tres servicios)
+.env

@@ -7,6 +7,9 @@ x-api-env: &api-env
   COMFYUI_URL: "http://comfyui:8188"
   COMFYUI_CHECKPOINT: "${COMFYUI_CHECKPOINT:-v1-5-pruned-emaonly.safetensors}"
   IMAGE_API_TOKEN: "${IMAGE_API_TOKEN:-}"
+  # SSE (`/jobs/{id}/events`) usa EventSource, que no permite cabeceras: la
+  # clave se acepta también por `?token=`.
+  API_ALLOW_QUERY_TOKEN: "1"
   PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
   # Estado y cola compartidos en Redis.
   JOB_STORE: "${JOB_STORE:-redis}"
@@ -87,6 +90,9 @@ services:
 
   # Fachada HTTP: elige entre ComfyUI local y proveedores externos.
   api:
+    # Claves de API compartidas: `.env` único en la raíz de Paimon.
+    env_file:
+      - ../.env
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -121,6 +127,9 @@ services:
 
   # Ejecuta los jobs consumiendo la cola de Redis. Escala con `--scale worker=N`.
   worker:
+    # Claves de API compartidas: `.env` único en la raíz de Paimon.
+    env_file:
+      - ../.env
     build:
       context: ./api
       dockerfile: Dockerfile

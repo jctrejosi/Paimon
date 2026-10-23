@@ -19,6 +19,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from .audio import encode_wav
+from .api_key_auth import APIKeyMiddleware
 from .config import get_settings
 from .deps import decode_upload, require_token, validate_audio
 from .preprocessing.api import router as preprocessing_router
@@ -51,6 +52,8 @@ app = FastAPI(
     description="Transcripción local (voz→texto) y preprocesamiento modular de audio.",
     lifespan=lifespan,
 )
+
+app.add_middleware(APIKeyMiddleware)
 
 # API propia de cada módulo de preprocesamiento (/processors, /preprocess, ...).
 app.include_router(preprocessing_router)

@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, UploadFile
 
+from .api_key_auth import auth_required, is_valid_token
 from .config import get_settings
 from .images import (
     ALLOWED_EXTENSIONS,
@@ -18,12 +19,11 @@ settings = get_settings()
 
 
 def require_token(authorization: Annotated[str | None, Header()] = None) -> None:
-    """Exige `Authorization: Bearer <token>` cuando hay token configurado."""
-    expected = settings.image_processing_api_token
-    if not expected:
+    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
+    if not auth_required():
         return
     scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or token != expected:
+    if scheme.lower() != "bearer" or not is_valid_token(token.strip()):
         raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
 
 

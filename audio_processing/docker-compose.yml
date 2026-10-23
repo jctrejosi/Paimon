@@ -17,6 +17,10 @@ services:
       - "127.0.0.1:${AUDIO_HOST_PORT:-8100}:8000"
     # Archivos/modelos con el UID del usuario del host (evita root-owned).
     user: "${PUID:-1001}:${PGID:-1001}"
+    # Claves de API compartidas (API_KEYS, API_AUTH_REQUIRED, API_PUBLIC_DOCS):
+    # viven en un único `.env` en la raíz de Paimon.
+    env_file:
+      - ../.env
     environment:
       HOME: /tmp
       # Caché de modelos dentro del volumen para no re-descargar.

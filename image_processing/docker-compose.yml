@@ -2,6 +2,9 @@ name: paimon-image-processing
 
 services:
   image-processing:
+    # Claves de API compartidas: `.env` único en la raíz de Paimon.
+    env_file:
+      - ../.env
     build:
       context: .
       dockerfile: Dockerfile

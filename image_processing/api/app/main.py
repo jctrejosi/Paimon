@@ -20,6 +20,7 @@ from fastapi import Depends, FastAPI, File, Form, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from .api_key_auth import APIKeyMiddleware
 from .config import get_settings
 from .deps import read_image_upload, require_token
 from .images import parse_background
@@ -49,6 +50,8 @@ app = FastAPI(
     description="Procesamiento local de imágenes. Primera función: quitar el fondo.",
     lifespan=lifespan,
 )
+
+app.add_middleware(APIKeyMiddleware)
 
 
 class ImageResponse(Response):

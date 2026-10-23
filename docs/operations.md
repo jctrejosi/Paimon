@@ -26,18 +26,52 @@ AUDIO_HOST_PORT=8000 IMAGE_API_HOST_PORT=8001 IMAGE_PROCESSING_HOST_PORT=8002 no
 Todo se publica en **loopback** (`127.0.0.1`): no queda expuesto a la red. ComfyUI y
 Redis no traen autenticación, por eso no deben exponerse.
 
-## Autenticación (tokens)
+## Autenticación (claves de API)
 
-Ambas son abiertas por defecto. Para protegerlas, define su token y pásalo como
-`Authorization: Bearer <token>`:
+Las tres APIs exigen una clave en **todas** las rutas salvo `/health`. La fuente
+principal es un único archivo `.env` en la raíz de Paimon:
+
+```dotenv
+API_KEYS=clave1,clave2
+API_AUTH_REQUIRED=1
+API_PUBLIC_DOCS=0
+```
+
+Los tres compose lo cargan con `env_file: ../.env`, así que basta con editar ahí
+y recrear los servicios.
+
+El cliente envía la clave de cualquiera de estas dos formas:
+
+```bash
+curl -H 'X-API-Key: clave1' https://paimon.jcti.xyz/audio/health
+curl -H 'Authorization: Bearer clave1' https://paimon.jcti.xyz/image/docs
+```
+
+Varias claves separadas por comas permiten revocar una sin afectar al resto.
+Genera cada una con `openssl rand -hex 32`.
+
+| Ajuste | Efecto |
+|---|---|
+| `API_AUTH_REQUIRED=0` | Desactiva la comprobación (solo desarrollo local). |
+| `API_PUBLIC_DOCS=1` | Deja `/docs`, `/redoc` y `/openapi.json` sin clave. |
+| `API_ALLOW_QUERY_TOKEN=1` | Acepta también `?token=` (solo `image_generator`, por SSE). |
+
+Si `API_AUTH_REQUIRED=1` y `API_KEYS` está vacío, las APIs responden `503` en
+lugar de quedar abiertas (fail-closed).
+
+### Tokens heredados
+
+Siguen funcionando y se aceptan **además** de `API_KEYS`; viven en el `.env` de
+cada servicio:
 
 | App | Variable |
 |-----|----------|
-| `audio_processing` | `AUDIO_API_TOKEN` (protege `/transcribe` y `/v1/audio/transcriptions`) |
-| `image_generator` | `IMAGE_API_TOKEN` (protege `/generate`, `/edit` y `/jobs`) |
-| `image_processing` | `IMAGE_PROCESSING_API_TOKEN` (protege `/remove-bg`) |
+| `audio_processing` | `AUDIO_API_TOKEN` |
+| `image_generator` | `IMAGE_API_TOKEN` |
+| `image_processing` | `IMAGE_PROCESSING_API_TOKEN` |
 
-En SSE (`EventSource`) el token va como `?token=<token>` porque no admite cabeceras.
+En SSE (`EventSource`) la clave va como `?token=<clave>` porque no admite
+cabeceras.
 
 ## Logs
 
