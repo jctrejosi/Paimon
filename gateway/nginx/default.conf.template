@@ -1,0 +1,32 @@
+# Se procesa con envsubst al arrancar el contenedor (nginx:alpine).
+# Solo escucha en loopback del host: el portal no se expone a la red.
+server {
+    listen 127.0.0.1:${SWAGGER_HOST_PORT} default_server;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 25m;
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # audio_processing (los puertos los pasa dev.js; 1 = servicio no disponible).
+    location /audio/ {
+        proxy_pass http://127.0.0.1:${AUDIO_PORT}/;
+        include /etc/nginx/paimon-proxy.inc;
+    }
+
+    # image_generator
+    location /image/ {
+        proxy_pass http://127.0.0.1:${IMAGE_PORT}/;
+        include /etc/nginx/paimon-proxy.inc;
+    }
+
+    # image_processing (remove-bg)
+    location /processing/ {
+        proxy_pass http://127.0.0.1:${PROCESSING_PORT}/;
+        include /etc/nginx/paimon-proxy.inc;
+    }
+}

@@ -1,0 +1,27 @@
+name: paimon-swagger
+
+services:
+  swagger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: paimon-swagger:local
+    container_name: paimon-swagger
+    # Red del host para alcanzar las APIs publicadas en 127.0.0.1 del host sin
+    # exponer nada a la LAN (nginx escucha solo en loopback).
+    network_mode: host
+    environment:
+      SWAGGER_HOST_PORT: "${SWAGGER_HOST_PORT:-8080}"
+      # Los puertos reales los inyecta dev.js; 1 = servicio no disponible.
+      AUDIO_PORT: "${AUDIO_PORT:-1}"
+      IMAGE_PORT: "${IMAGE_PORT:-1}"
+      PROCESSING_PORT: "${PROCESSING_PORT:-1}"
+      # Clave compartida que el proxy añade a cada petición. "-" = sin clave.
+      API_KEY: "${API_KEY:--}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$$SWAGGER_HOST_PORT/ >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

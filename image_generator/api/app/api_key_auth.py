@@ -27,7 +27,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
-from urllib.parse import parse_qs
+from urllib.parse import unquote_to_bytes
 
 from starlette.responses import JSONResponse
 
@@ -38,6 +38,32 @@ LEGACY_TOKEN_ENV: str | None = "IMAGE_API_TOKEN"
 
 PUBLIC_PATHS = frozenset({"/health", "/healthz", "/live", "/ready"})
 DOC_PATHS = frozenset({"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"})
+
+
+def require_valid_token(token: str | bytes | None) -> None:
+    """Lanza 401 si la clave dada no es válida (o falta)."""
+    from fastapi import HTTPException
+
+    if not auth_required():
+        return
+    if not is_valid_token(token or ""):
+        raise HTTPException(status_code=401, detail="Clave de API inválida o ausente.")
+
+
+def require_valid_key(authorization: str | None, x_api_key: str | None) -> None:
+    """Comprueba la clave en una dependencia de FastAPI.
+
+    Acepta `X-API-Key` o `Authorization: Bearer`; lanza 401 si ninguna vale.
+    """
+    if not auth_required():
+        return
+
+    token = (x_api_key or "").strip()
+    if not token:
+        scheme, _, value = (authorization or "").partition(" ")
+        token = value.strip() if scheme.lower() == "bearer" else ""
+
+    require_valid_token(token)
 
 
 def _flag(name: str, default: str = "0") -> bool:
@@ -59,38 +85,49 @@ def expected_keys() -> list[str]:
     return keys
 
 
-def is_valid_token(token: str) -> bool:
-    """Compara en tiempo constante contra todas las claves configuradas."""
+def is_valid_token(token: str | bytes) -> bool:
+    """Compara en tiempo constante contra todas las claves configuradas.
+
+    Se comparan bytes: las cabeceras HTTP no son UTF-8, así que una clave con
+    acentos llega como bytes. Al recibir un `str` (ya decodificado como latin-1
+    por Starlette) se re-codifica a latin-1 para recuperar los bytes originales.
+    """
     if not token:
         return False
-    candidate = token.encode("utf-8")
+    if isinstance(token, str):
+        try:
+            candidate = token.encode("latin-1")
+        except UnicodeEncodeError:
+            candidate = token.encode("utf-8")
+    else:
+        candidate = token
     return any(hmac.compare_digest(candidate, key.encode("utf-8")) for key in expected_keys())
 
 
-def _header(scope, name: bytes) -> str:
+def _header(scope, name: bytes) -> bytes:
     for key, value in scope.get("headers", []):
         if key.lower() == name:
-            return value.decode("latin-1").strip()
-    return ""
+            return value.strip()
+    return b""
 
 
-def token_from_request(scope) -> str:
+def token_from_request(scope) -> bytes:
     """Extrae la clave de `X-API-Key`, `Authorization: Bearer` o la query."""
     token = _header(scope, b"x-api-key")
     if token:
         return token
 
-    scheme, _, value = _header(scope, b"authorization").partition(" ")
-    if scheme.lower() == "bearer" and value.strip():
+    scheme, _, value = _header(scope, b"authorization").partition(b" ")
+    if scheme.lower() == b"bearer" and value.strip():
         return value.strip()
 
     if _flag("API_ALLOW_QUERY_TOKEN"):
-        params = parse_qs(scope.get("query_string", b"").decode("latin-1"))
-        token = (params.get("token") or params.get("api_key") or [""])[0].strip()
-        if token:
-            return token
+        for pair in scope.get("query_string", b"").split(b"&"):
+            key, _, value = pair.partition(b"=")
+            if key in (b"token", b"api_key") and value:
+                return unquote_to_bytes(value)
 
-    return ""
+    return b""
 
 
 class APIKeyMiddleware:

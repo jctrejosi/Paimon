@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, UploadFile
+from fastapi import Depends, Header, HTTPException, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .audio import ALLOWED_EXTENSIONS, AudioClip, decode_bytes, extension_of, max_bytes
-from .api_key_auth import auth_required, is_valid_token
+from .api_key_auth import require_valid_token
 from .config import get_settings
 
 settings = get_settings()
@@ -19,12 +19,13 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 def require_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    x_api_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
-    if not auth_required():
-        return
-    if credentials is None or not is_valid_token(credentials.credentials):
-        raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
+    """Exige una clave válida por `X-API-Key` o `Authorization: Bearer`."""
+    if x_api_key and x_api_key.strip():
+        require_valid_token(x_api_key)
+    else:
+        require_valid_token(credentials.credentials if credentials else None)
 
 
 def validate_audio(content: bytes, filename: str | None) -> None:

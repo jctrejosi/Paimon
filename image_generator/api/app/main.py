@@ -22,7 +22,12 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import metrics
-from .api_key_auth import APIKeyMiddleware, auth_required, is_valid_token
+from .api_key_auth import (
+    APIKeyMiddleware,
+    auth_required,
+    is_valid_token,
+    require_valid_key,
+)
 from .config import get_settings
 from .jobs import TERMINAL_STATUSES, JobManager, JobRunner, build_backends
 from .providers.base import ProviderError
@@ -101,13 +106,12 @@ async def record_http_metrics(request: Request, call_next):
     return response
 
 
-def require_token(authorization: str | None = Header(default=None)) -> None:
-    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
-    if not auth_required():
-        return
-    scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or not is_valid_token(token.strip()):
-        raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
+def require_token(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+) -> None:
+    """Exige una clave válida por `X-API-Key` o `Authorization: Bearer`."""
+    require_valid_key(authorization, x_api_key)
 
 
 def _sse_authorized(request: Request, authorization: str | None) -> bool:
@@ -117,10 +121,12 @@ def _sse_authorized(request: Request, authorization: str | None) -> bool:
     """
     if not auth_required():
         return True
-    scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() == "bearer" and is_valid_token(token.strip()):
-        return True
-    return is_valid_token(request.query_params.get("token", ""))
+    candidates = (
+        request.headers.get("x-api-key"),
+        (authorization or "").partition(" ")[2],
+        request.query_params.get("token"),
+    )
+    return any(is_valid_token(token) for token in candidates if token)
 
 
 @app.exception_handler(ProviderError)

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paimon — API</title>
+  <link rel="stylesheet" href="./swagger-ui.css">
+  <style>
+    html { box-sizing: border-box; overflow-y: scroll; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; }
+    #loading, #empty {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      padding: 2.5rem 1.5rem;
+      color: #3b4151;
+    }
+    #empty code { background: #eee; padding: .15rem .35rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"><p id="loading">Cargando APIs de Paimon…</p></div>
+
+  <script src="./swagger-ui-bundle.js"></script>
+  <script src="./swagger-ui-standalone-preset.js"></script>
+  <script>
+    // Cada entrada se sirve a través del proxy de este mismo origen, así que
+    // Swagger usa /audio, /image y /processing como base de cada API.
+    const SERVICES = [
+      { name: "image_processing — remove-bg", url: "processing/openapi.json" },
+      { name: "audio_processing", url: "audio/openapi.json" },
+      { name: "image_generator", url: "image/openapi.json" },
+    ];
+
+    (async () => {
+      // Solo se muestran las APIs que responden: si un servicio está parado, no
+      // ensucia el selector con errores.
+      const available = [];
+      for (const service of SERVICES) {
+        try {
+          const response = await fetch(service.url, { cache: "no-store" });
+          if (response.ok) available.push(service);
+        } catch (_) {
+          /* servicio caído: se omite */
+        }
+      }
+
+      if (available.length === 0) {
+        document.getElementById("swagger-ui").innerHTML =
+          '<div id="empty"><h2>Ninguna API responde</h2>' +
+          "<p>Levanta los servicios con:</p>" +
+          "<p><code>node dev.js --audio --image --processing</code></p>" +
+          "<p>y recarga esta página.</p></div>";
+        return;
+      }
+
+      document.getElementById("loading")?.remove();
+      window.ui = SwaggerUIBundle({
+        urls: available,
+        "urls.primaryName": available[0].name,
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        tryItOutEnabled: true,
+        persistAuthorization: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+        layout: "StandaloneLayout",
+      });
+    })();
+  </script>
+</body>
+</html>

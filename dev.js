@@ -6,10 +6,11 @@
  * Each app is a `docker compose` stack in its own folder, so this launcher
  * delegates to Compose (no venvs, no PIDs: Docker gestiona los contenedores).
  *
- *   node dev.js                 # levanta los tres: audio + image + processing
+ *   node dev.js                 # levanta todo: audio + image + processing + swagger
  *   node dev.js --audio         # solo audio_processing
  *   node dev.js --image         # solo image_generator
  *   node dev.js --processing    # solo image_processing (alias: --removebg)
+ *   node dev.js --swagger       # portal Swagger global (alias: --docs, --gateway)
  *   node dev.js --all           # explícito: los tres
  *   node dev.js --build         # (re)construye las imágenes al levantar
  *   node dev.js --logs [flags]  # sigue los logs de los seleccionados (Ctrl+C sale)
@@ -88,6 +89,22 @@ const PROJECTS = [
       ["remove-bg", `POST http://localhost:${p}/remove-bg`],
     ],
   },
+  {
+    name: "swagger",
+    label: "swagger global",
+    dir: "gateway",
+    container: "paimon-swagger",
+    portEnv: "SWAGGER_HOST_PORT",
+    port: 8080,
+    // `network_mode: host`: no publica puertos; escucha en el loopback del host
+    // y desde ahí proxya las APIs publicadas en 127.0.0.1.
+    hostNetwork: true,
+    color: "\x1b[33m",
+    endpoints: (p) => [
+      ["Swagger", `http://localhost:${p}`],
+      ["APIs", `http://localhost:${p}/  (audio, image, processing)`],
+    ],
+  },
 ];
 
 const PROJECT_NAMES = new Set(PROJECTS.map((p) => p.name));
@@ -100,6 +117,11 @@ const PROJECT_ALIASES = {
   remove_bg: "processing",
   "image-processing": "processing",
   image_processing: "processing",
+  docs: "swagger",
+  gateway: "swagger",
+  portal: "swagger",
+  apidocs: "swagger",
+  "api-docs": "swagger",
 };
 
 // Puertos fijos que no deben asignarse por reasignación automática.
@@ -172,7 +194,15 @@ async function assignPorts(projects) {
     const start = preferredPort(project);
     // Si el contenedor ya está en marcha, conservamos su puerto del host:
     // re-ejecutar dev.js no debe mover las URLs.
-    const live = project.container ? runningHostPort(project.container, 8000) : null;
+    // Con `network_mode: host` no hay puertos publicados que consultar, así que
+    // se mantiene el puerto de partida si el contenedor está vivo.
+    const live = project.hostNetwork
+      ? isContainerRunning(project.container)
+        ? start.port
+        : null
+      : project.container
+        ? runningHostPort(project.container, 8000)
+        : null;
     let port = start.pinned ? start.port : (live ?? start.port);
     if (!start.pinned && live === null) {
       while (used.has(port) || !(await isPortFree(port))) port += 1;
@@ -256,7 +286,59 @@ function runningHostPort(container, containerPort) {
   return match ? Number.parseInt(match[1], 10) : null;
 }
 
-function startProject(project, port, { build }) {
+/** True si el contenedor existe y está en marcha. */
+function isContainerRunning(container) {
+  if (!container) return false;
+  const r = spawnSync("docker", ["inspect", "-f", "{{.State.Running}}", container], {
+    encoding: "utf8",
+  });
+  return r.status === 0 && r.stdout.trim() === "true";
+}
+
+// Variable de entorno que el gateway usa para cada API proxeada.
+const GATEWAY_TARGETS = {
+  audio: "AUDIO_PORT",
+  image: "IMAGE_PORT",
+  processing: "PROCESSING_PORT",
+};
+
+/**
+ * Puertos que el portal Swagger debe proxear. Si una app no se levanta en esta
+ * ejecución, se usa el de un contenedor ya en marcha; si no está, 1 (no
+ * disponible) para que el portal la omita.
+ */
+function gatewayTargets(ports) {
+  const env = {};
+  for (const project of PROJECTS) {
+    const key = GATEWAY_TARGETS[project.name];
+    if (!key) continue;
+    env[key] = String(
+      ports[project.name] ?? runningHostPort(project.container, 8000) ?? 1,
+    );
+  }
+  return env;
+}
+
+/**
+ * Primera clave de `API_KEYS` en el `.env` de la raíz. El portal la inyecta en
+ * las peticiones proxeadas para que "Try it out" no pida token.
+ */
+function sharedApiKey() {
+  try {
+    const text = fs.readFileSync(path.join(ROOT, ".env"), "utf8");
+    for (const line of text.split("\n")) {
+      const match = line.match(/^\s*API_KEYS\s*=\s*(.*)$/);
+      if (!match) continue;
+      const value = match[1].trim().replace(/^["']|["']$/g, "");
+      return value.split(",")[0].trim();
+    }
+  } catch {
+    /* sin .env: el portal funciona sin clave */
+  }
+  return "";
+}
+
+function startProject(project, port, { build, extraEnv = {} }) {
   const tag = color(project);
   const args = ["up", "-d"];
   if (build) args.push("--build");
@@ -268,7 +350,7 @@ function startProject(project, port, { build }) {
   const r = spawnSync("docker", ["compose", ...args], {
     cwd: path.join(ROOT, project.dir),
     stdio: ["ignore", fd, fd],
-    env: { ...process.env, [project.portEnv]: String(port) },
+    env: { ...process.env, [project.portEnv]: String(port), ...extraEnv },
   });
   fs.closeSync(fd);
 
@@ -339,12 +421,13 @@ function printUrls(projects, ports) {
 
 function printCommands() {
   const rows = [
-    ["node dev.js", "levanta los tres aplicativos"],
+    ["node dev.js", "levanta todo (apps + Swagger global)"],
     ["node dev.js --audio", "solo audio_processing"],
     ["node dev.js --image", "solo image_generator"],
     ["node dev.js --processing", "solo image_processing (quita-fondo)"],
     ["node dev.js --removebg", "alias de --processing"],
-    ["node dev.js --all", "los tres (explícito)"],
+    ["node dev.js --swagger", "portal Swagger global (alias --docs, --gateway)"],
+    ["node dev.js --all", "todo (apps + Swagger)"],
     ["node dev.js --build", "reconstruye las imágenes al levantar"],
     ["node dev.js --logs [flags]", "sigue los logs de los seleccionados"],
     ["node dev.js --stop [flags]", "detiene los seleccionados (o todos)"],
@@ -362,12 +445,14 @@ function printHelp() {
   out.push("USO");
   out.push("  node dev.js [flags]");
   out.push("");
-  out.push("SELECCIÓN (sin flags levanta los tres)");
+  out.push("SELECCIÓN (sin flags levanta todo)");
   out.push("  --audio            solo audio_processing   (API :8100)");
   out.push("  --image            solo image_generator    (API :8101 + ComfyUI :8188)");
   out.push("  --processing       solo image_processing   (API :8102, POST /remove-bg)");
   out.push("                       alias: --removebg, --remove-bg, --image-processing");
-  out.push("  --all              los tres (explícito)");
+  out.push("  --swagger          portal Swagger global   (UI :8080, todas las APIs)");
+  out.push("                       alias: --docs, --gateway, --portal");
+  out.push("  --all              todo (apps + Swagger)");
   out.push("");
   out.push("MODOS");
   out.push("  --build            (re)construye las imágenes al levantar");
@@ -381,10 +466,11 @@ function printHelp() {
   out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT e IMAGE_PROCESSING_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");
-  out.push("  node dev.js                    → audio_processing + image_generator + image_processing");
+  out.push("  node dev.js                    → audio + image + processing + swagger");
   out.push("  node dev.js --audio --build    → solo audio, reconstruyendo la imagen");
+  out.push("  node dev.js --processing --swagger → quita-fondo + portal Swagger");
   out.push("  node dev.js --logs --image     → sigue los logs de image_generator");
-  out.push("  node dev.js --stop             → detiene los tres");
+  out.push("  node dev.js --stop             → detiene todo");
   out.push("");
   out.push("Logs: logs/<app>.log");
   out.push("Un flag desconocido no ejecuta nada (aborta; usa --help para ver las opciones).");
@@ -412,7 +498,7 @@ async function main() {
 
   const selected = selectProjects(argv);
   const projects = selected ?? PROJECTS;
-  const label = selected ? selected.map((p) => p.label).join(" + ") : "los tres";
+  const label = selected ? selected.map((p) => p.label).join(" + ") : "todo";
 
   if (!checkDocker()) process.exit(1);
 
@@ -431,7 +517,11 @@ async function main() {
 
   const started = [];
   for (const p of projects) {
-    if (startProject(p, ports[p.name], { build: BUILD })) started.push(p);
+    const extraEnv =
+      p.name === "swagger"
+        ? { ...gatewayTargets(ports), API_KEY: sharedApiKey() }
+        : {};
+    if (startProject(p, ports[p.name], { build: BUILD, extraEnv })) started.push(p);
   }
 
   for (const p of started) {

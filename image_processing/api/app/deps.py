@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, UploadFile
 
-from .api_key_auth import auth_required, is_valid_token
+from .api_key_auth import require_valid_key
 from .config import get_settings
 from .images import (
     ALLOWED_EXTENSIONS,
@@ -18,13 +18,12 @@ from .images import (
 settings = get_settings()
 
 
-def require_token(authorization: Annotated[str | None, Header()] = None) -> None:
-    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
-    if not auth_required():
-        return
-    scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or not is_valid_token(token.strip()):
-        raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
+def require_token(
+    authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header()] = None,
+) -> None:
+    """Exige una clave válida por `X-API-Key` o `Authorization: Bearer`."""
+    require_valid_key(authorization, x_api_key)
 
 
 async def read_image_upload(file: UploadFile) -> bytes:
