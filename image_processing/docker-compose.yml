@@ -11,8 +11,9 @@ services:
     image: paimon-image-processing:local
     container_name: paimon-image-processing
     # Solo en loopback: sin autenticación por defecto; no exponer a la red.
+    # 8102 queda reservado para este servicio (8000/8002 chocan con otros).
     ports:
-      - "127.0.0.1:${IMAGE_PROCESSING_HOST_PORT:-8002}:8000"
+      - "127.0.0.1:${IMAGE_PROCESSING_HOST_PORT:-8102}:8000"
     # Archivos/modelos con el UID del usuario del host (evita root-owned).
     user: "${PUID:-1001}:${PGID:-1001}"
     environment:

@@ -172,11 +172,11 @@ nada de esto.
 ```bash
 # Diarización sin credenciales (la 1ª vez descarga el modelo de speechbrain)
 curl -s -F file=@audio.ogg -F 'params={"backend":"ecapa","num_speakers":2}' \
-  http://127.0.0.1:8000/preprocess/diarize | jq '.segments'
+  http://127.0.0.1:8100/preprocess/diarize | jq '.segments'
 
 # Con pyannote (requiere HF_TOKEN y aceptar las condiciones del modelo)
 curl -s -F file=@audio.ogg -F 'params={"backend":"pyannote"}' \
-  http://127.0.0.1:8000/preprocess/diarize | jq '.segments'
+  http://127.0.0.1:8100/preprocess/diarize | jq '.segments'
 ```
 
 ## Uso
@@ -184,16 +184,16 @@ curl -s -F file=@audio.ogg -F 'params={"backend":"pyannote"}' \
 ```bash
 # Limpieza mínima + transcripción
 curl -s -F file=@audio.ogg -F preprocess=minimal \
-  http://127.0.0.1:8000/transcribe | jq
+  http://127.0.0.1:8100/transcribe | jq
 
 # Un módulo suelto (devuelve WAV en base64 + métricas)
 curl -s -F file=@audio.ogg -F 'params={"cutoff":120}' \
-  http://127.0.0.1:8000/preprocess/highpass | jq '.metrics'
+  http://127.0.0.1:8100/preprocess/highpass | jq '.metrics'
 
 # Pipeline a medida
 curl -s -F file=@audio.ogg \
   -F 'steps=[{"name":"denoise"},{"name":"resample","params":{"sample_rate":16000}}]' \
-  http://127.0.0.1:8000/preprocess | jq '.steps[].name'
+  http://127.0.0.1:8100/preprocess | jq '.steps[].name'
 ```
 
 ## Ejecución

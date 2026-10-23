@@ -12,8 +12,9 @@ services:
     container_name: paimon-audio-processing
     # Solo en loopback: sin autenticación por defecto; no exponer a la red.
     # El puerto del host es configurable (dev.js lo ajusta si hay conflicto).
+    # 8100 queda reservado para este servicio (8000/8002 chocan con otros).
     ports:
-      - "127.0.0.1:${AUDIO_HOST_PORT:-8000}:8000"
+      - "127.0.0.1:${AUDIO_HOST_PORT:-8100}:8000"
     # Archivos/modelos con el UID del usuario del host (evita root-owned).
     user: "${PUID:-1001}:${PGID:-1001}"
     environment:

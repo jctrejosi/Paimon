@@ -45,7 +45,7 @@ Documentación interactiva en `/docs` (OpenAPI).
 ### Generar una imagen
 
 ```bash
-curl -s http://127.0.0.1:8000/generate \
+curl -s http://127.0.0.1:8101/generate \
   -H 'Content-Type: application/json' \
   -d '{
         "prompt": "un faro al atardecer, estilo acuarela",
@@ -65,7 +65,7 @@ Respuesta:
   "provider": "comfyui",
   "model": "v1-5-pruned-emaonly.safetensors",
   "created": 1730000000,
-  "images": [{"url": "http://127.0.0.1:8000/images/comfyui-…png", "seed": 123}],
+  "images": [{"url": "http://127.0.0.1:8101/images/comfyui-…png", "seed": 123}],
   "metadata": {"prompt_id": "…", "mode": "txt2img"}
 }
 ```
@@ -81,7 +81,7 @@ la que se rehace). `strength` (0–1) controla cuánto se transforma la imagen
 inicial.
 
 ```bash
-curl -s http://127.0.0.1:8000/edit \
+curl -s http://127.0.0.1:8101/edit \
   -H 'Content-Type: application/json' \
   -d '{
         "prompt": "añade un gato sentado",
@@ -102,16 +102,16 @@ concurrencia limitada (`JOB_CONCURRENCY`).
 
 ```bash
 # 1) Encolar
-JOB=$(curl -s http://127.0.0.1:8000/jobs \
+JOB=$(curl -s http://127.0.0.1:8101/jobs \
   -H 'Content-Type: application/json' \
   -d '{"prompt": "fondo de pantalla abstracto", "webhook_url": "https://mi.app/hook"}')
 JOB_ID=$(echo "$JOB" | python -c 'import sys,json;print(json.load(sys.stdin)["id"])')
 
 # 2) Consultar
-curl -s "http://127.0.0.1:8000/jobs/$JOB_ID"
+curl -s "http://127.0.0.1:8101/jobs/$JOB_ID"
 
 # 3) Cancelar (si sigue en cola o en curso)
-curl -s -X DELETE "http://127.0.0.1:8000/jobs/$JOB_ID"
+curl -s -X DELETE "http://127.0.0.1:8101/jobs/$JOB_ID"
 ```
 
 Estados: `queued` → `running` → `succeeded` | `failed` | `canceled`. Si envías
@@ -123,7 +123,7 @@ Estados: `queued` → `running` → `succeeded` | `failed` | `canceled`. Si env�
 cierra el flujo al llegar a un estado terminal.
 
 ```bash
-curl -N http://127.0.0.1:8000/jobs/$JOB_ID/events
+curl -N http://127.0.0.1:8101/jobs/$JOB_ID/events
 # data: {"id":"…","status":"queued",…}
 # data: {"id":"…","status":"running",…}
 # data: {"id":"…","status":"succeeded","result":{…}}

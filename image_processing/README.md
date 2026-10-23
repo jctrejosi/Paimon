@@ -65,18 +65,18 @@ Respuesta `response_format=json`:
 
 ```bash
 # PNG transparente (descarga como remove-bg.png)
-curl -s -OJ -F file=@foto.jpg http://127.0.0.1:8002/remove-bg
+curl -s -OJ -F file=@foto.jpg http://127.0.0.1:8102/remove-bg
 
 # ...o elige tú el nombre
-curl -s -F file=@foto.jpg http://127.0.0.1:8002/remove-bg -o sin-fondo.png
+curl -s -F file=@foto.jpg http://127.0.0.1:8102/remove-bg -o sin-fondo.png
 
 # Fondo blanco, WebP
 curl -s -F file=@foto.jpg -F background=#ffffff -F output_format=webp \
-  http://127.0.0.1:8002/remove-bg -o sin-fondo.webp
+  http://127.0.0.1:8102/remove-bg -o sin-fondo.webp
 
 # JSON con base64
 curl -s -F file=@foto.jpg -F response_format=json \
-  http://127.0.0.1:8002/remove-bg | jq -r .image_base64 | base64 -d > sin-fondo.png
+  http://127.0.0.1:8102/remove-bg | jq -r .image_base64 | base64 -d > sin-fondo.png
 ```
 
 ### Formatos y límites
@@ -142,7 +142,7 @@ Variables de entorno (o `.env`, no versionado):
 
 ```bash
 cd image_processing
-docker compose up --build           # API en 127.0.0.1:8002
+docker compose up --build           # API en 127.0.0.1:8102
 ```
 
 O con el lanzador del repo:

@@ -18,11 +18,12 @@
  *
  * PUERTOS
  *   Cada API escucha internamente en :8000. Al levantar varias, se publican en
- *   puertos distintos del host (el siguiente libre) para que no choquen; los
- *   puertos ya ocupados se saltan. Se fijan con AUDIO_HOST_PORT /
+ *   puertos distintos del host: audio :8100, imagen :8101 y procesamiento :8102
+ *   (el siguiente libre si alguno está ocupado). Se fijan con AUDIO_HOST_PORT /
  *   IMAGE_API_HOST_PORT / IMAGE_PROCESSING_HOST_PORT. Si un contenedor ya está
  *   en marcha, se conserva su puerto (re-ejecutar no mueve las URLs). Los demás
- *   puertos no cambian: ComfyUI :8188 y Redis :6379 (image_generator), worker :9100.
+ *   puertos no cambian: ComfyUI :8188 (COMFYUI_HOST_PORT), métricas :9101
+ *   (IMAGE_METRICS_HOST_PORT). Redis NO se publica en el host.
  *
  * Logs: logs/<app>.log (salida de `docker compose`).
  */
@@ -50,7 +51,7 @@ const PROJECTS = [
     dir: "audio_processing",
     container: "paimon-audio-processing",
     portEnv: "AUDIO_HOST_PORT",
-    port: 8000,
+    port: 8100,
     color: "\x1b[36m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
@@ -65,12 +66,12 @@ const PROJECTS = [
     dir: "image_generator",
     container: "paimon-image-api",
     portEnv: "IMAGE_API_HOST_PORT",
-    port: 8000,
+    port: 8101,
     color: "\x1b[32m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
       ["docs", `http://localhost:${p}/docs`],
-      ["ComfyUI", "http://localhost:8188"],
+      ["ComfyUI", `http://localhost:${process.env.COMFYUI_HOST_PORT || 8188}`],
     ],
   },
   {
@@ -79,7 +80,7 @@ const PROJECTS = [
     dir: "image_processing",
     container: "paimon-image-processing",
     portEnv: "IMAGE_PROCESSING_HOST_PORT",
-    port: 8002,
+    port: 8102,
     color: "\x1b[35m",
     endpoints: (p) => [
       ["API", `http://localhost:${p}`],
@@ -102,7 +103,8 @@ const PROJECT_ALIASES = {
 };
 
 // Puertos fijos que no deben asignarse por reasignación automática.
-const RESERVED_PORTS = [8188, 6379, 9100];
+// 8188 = ComfyUI, 9101 = métricas del worker.
+const RESERVED_PORTS = [8188, 9101];
 
 const VALID_FLAGS = new Set([
   "--all",
@@ -361,9 +363,9 @@ function printHelp() {
   out.push("  node dev.js [flags]");
   out.push("");
   out.push("SELECCIÓN (sin flags levanta los tres)");
-  out.push("  --audio            solo audio_processing   (API :8000)");
-  out.push("  --image            solo image_generator    (API :8000 + ComfyUI :8188 + Redis :6379)");
-  out.push("  --processing       solo image_processing   (API :8002, POST /remove-bg)");
+  out.push("  --audio            solo audio_processing   (API :8100)");
+  out.push("  --image            solo image_generator    (API :8101 + ComfyUI :8188)");
+  out.push("  --processing       solo image_processing   (API :8102, POST /remove-bg)");
   out.push("                       alias: --removebg, --remove-bg, --image-processing");
   out.push("  --all              los tres (explícito)");
   out.push("");
@@ -374,8 +376,8 @@ function printHelp() {
   out.push("  --help             esta ayuda");
   out.push("");
   out.push("PUERTOS");
-  out.push("  Cada API usa :8000 internamente. Al levantar varias, se publican en");
-  out.push("  puertos distintos del host (el siguiente libre), saltando los ya ocupados.");
+  out.push("  Cada API usa :8000 internamente. En el host se publican en 8100/8101/8102");
+  out.push("  (o el siguiente libre), saltando los ya ocupados.");
   out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT e IMAGE_PROCESSING_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");

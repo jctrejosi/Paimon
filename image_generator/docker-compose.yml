@@ -40,7 +40,7 @@ services:
     container_name: paimon-comfyui
     # Solo en loopback: ComfyUI no trae autenticación; no exponer a la red.
     ports:
-      - "127.0.0.1:8188:8188"
+      - "127.0.0.1:${COMFYUI_HOST_PORT:-8188}:8188"
     # Archivos generados/servidos con el UID del usuario del host (evita root-owned).
     user: "${PUID:-1001}:${PGID:-1001}"
     environment:
@@ -74,9 +74,10 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
-    ports:
-      # Solo loopback: uso interno de api/worker.
-      - "127.0.0.1:6379:6379"
+    # Sin puerto en el host: solo lo usan api/worker dentro de la red de compose.
+    # Así no choca con Redis de otros proyectos (p. ej. ecommerce usa 6379/6380).
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -101,9 +102,9 @@ services:
       # La API solo encola; el worker ejecuta.
       JOB_EXECUTION: "${JOB_EXECUTION:-worker}"
     ports:
-      # El puerto del host es configurable (dev.js lo ajusta si hay conflicto
-      # con audio_processing, que también usa :8000).
-      - "127.0.0.1:${IMAGE_API_HOST_PORT:-8000}:8000"
+      # El puerto del host es configurable (dev.js lo ajusta si hay conflicto).
+      # 8101 queda reservado para este servicio.
+      - "127.0.0.1:${IMAGE_API_HOST_PORT:-8101}:8000"
     volumes:
       - ./api/outputs:/data/outputs
     healthcheck:
@@ -132,8 +133,8 @@ services:
         condition: service_healthy
     environment: *api-env
     ports:
-      # Métricas del worker (Prometheus).
-      - "127.0.0.1:9100:9100"
+      # Métricas del worker (Prometheus). 9101 para no chocar con otros exporters.
+      - "127.0.0.1:${IMAGE_METRICS_HOST_PORT:-9101}:9100"
     volumes:
       - ./api/outputs:/data/outputs
     healthcheck:
