@@ -78,19 +78,24 @@ fotograma si es animada. Salida: PNG o WebP, ambos con canal alfa.
 
 ```bash
 cd image_processing
-docker compose up --build           # API en 127.0.0.1:8002
+docker compose up --build           # API en 127.0.0.1:8102
 
 # solo image_processing (alias: --removebg, --remove-bg, --image-processing)
-IMAGE_PROCESSING_HOST_PORT=8003 node dev.js --processing --build
+node dev.js --processing --build
+
+# quita-fondo + portal Swagger global
+node dev.js --processing --swagger
 ```
 
-Si el puerto 8002 ya lo ocupa `image_generator`, el lanzador salta al siguiente
-libre; en este equipo la API queda en `http://127.0.0.1:8003` (`/docs` para Swagger).
+El puerto `8102` está reservado para este servicio; si está ocupado, el lanzador
+usa el siguiente libre. El portal global (`http://localhost:8080`) reúne esta API
+con las demás; ver [`swagger.md`](swagger.md).
+
 Sin Docker (venv local):
 
 ```bash
 cd image_processing/api
-.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8003
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8102
 ```
 
 ## Validación en este equipo
@@ -113,7 +118,7 @@ menos RAM). `isnet` deja un halo semitransparente de ~6 px de alfa alrededor del
 objeto; al componer sobre un color, ese halo mezcla ligeramente con el color de
 fondo (es composición alfa correcta, no un fallo).
 
-También validado (contenedor Docker en `8003`): entrada **JPEG, WebP, AVIF, HEIC,
+También validado (contenedor Docker): entrada **JPEG, WebP, AVIF, HEIC,
 GIF, BMP, TIFF, sin extensión y con extensión rara** → HTTP `200` con la máscara
 idéntica en todos los casos (45,2 % transparente) y 17–22 s en caliente. Salida
 WebP con alfa, fondo `#RRGGBB`, `response_format=json` (base64 + metadatos) y los

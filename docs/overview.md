@@ -37,6 +37,11 @@ Paimon/
 └── image_processing/         # app: procesamiento de imágenes (quita-fondo)
     ├── api/                  #   código de la API (FastAPI) + tests
     └── Dockerfile / docker-compose.yml
+
+gateway/                      # portal Swagger global (nginx + Swagger UI)
+├── html/index.html           #   UI con selector de APIs
+├── nginx/                    #   proxy inverso a /audio, /image, /processing
+└── Dockerfile / docker-compose.yml
 ```
 
 > `image_generator/ComfyUI` es un **submódulo git** (ver `.gitmodules`). Hay que
@@ -46,13 +51,15 @@ Paimon/
 
 | App | Carpeta | Qué hace | Puerto por defecto |
 |-----|---------|----------|--------------------|
-| **audio_processing** | `audio_processing/` | Transcripción (voz→texto) y preprocesamiento modular de audio. | API `8000` |
-| **image_generator** | `image_generator/` | Generación/edición de imágenes (ComfyUI local o proveedores cloud). | API `8000`, ComfyUI `8188`, Redis `6379` |
-| **image_processing** | `image_processing/` | Procesamiento de imágenes local (quita-fondo). | API `8002` (`8003` si está ocupado) |
+| **audio_processing** | `audio_processing/` | Transcripción (voz→texto) y preprocesamiento modular de audio. | API `8100` |
+| **image_generator** | `image_generator/` | Generación/edición de imágenes (ComfyUI local o proveedores cloud). | API `8101`, ComfyUI `8188`, Redis `6379` |
+| **image_processing** | `image_processing/` | Procesamiento de imágenes local (quita-fondo). | API `8102` |
+| **swagger** | `gateway/` | Portal Swagger global con todas las APIs en un origen. | `8080` |
 
 Detalle en [`apps/audio_processing.md`](apps/audio_processing.md),
-[`apps/image_generator.md`](apps/image_generator.md) y
-[`apps/image_processing.md`](apps/image_processing.md).
+[`apps/image_generator.md`](apps/image_generator.md),
+[`apps/image_processing.md`](apps/image_processing.md) y
+[`apps/swagger.md`](apps/swagger.md).
 
 ## Requisitos
 

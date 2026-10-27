@@ -7,24 +7,27 @@ típicos.
 
 | Servicio | Puerto (host, loopback) |
 |----------|-------------------------|
-| `audio_processing` — API | `8000` |
-| `image_generator` — API | `8000` |
+| `audio_processing` — API | `8100` |
+| `image_generator` — API | `8101` |
 | `image_generator` — ComfyUI | `8188` |
 | `image_generator` — Redis | `6379` |
 | `image_generator` — worker (métricas) | `9100` |
-| `image_processing` — API | `8002` |
+| `image_processing` — API | `8102` |
+| `swagger` — portal global | `8080` |
 
-Las APIs de audio e imágenes coinciden en `:8000`. Si se levantan a la vez con
-`dev.js`, las siguientes pasan al siguiente puerto libre (`:8001`, …). `image_processing`
-usa `8002` por defecto. En este equipo `8001` y `8002` están ocupados, así que
-`image_processing` queda en `8003`. Para fijarlas a mano:
+Los `81xx` están reservados para las APIs de Paimon y evitan los `80xx` que usan
+otros proyectos del equipo. Si aun así un puerto está ocupado, `dev.js` pasa al
+siguiente libre y conserva el de un contenedor que ya esté en marcha. Para
+fijarlos a mano:
 
 ```bash
-AUDIO_HOST_PORT=8000 IMAGE_API_HOST_PORT=8001 IMAGE_PROCESSING_HOST_PORT=8002 node dev.js
+AUDIO_HOST_PORT=8100 IMAGE_API_HOST_PORT=8101 \
+IMAGE_PROCESSING_HOST_PORT=8102 SWAGGER_HOST_PORT=8080 node dev.js
 ```
 
 Todo se publica en **loopback** (`127.0.0.1`): no queda expuesto a la red. ComfyUI y
-Redis no traen autenticación, por eso no deben exponerse.
+Redis no traen autenticación, por eso no deben exponerse. El portal Swagger corre
+con red del host pero escucha en `127.0.0.1:8080`.
 
 ## Autenticación (claves de API)
 

@@ -150,7 +150,8 @@ O con el lanzador del repo:
 ```bash
 node dev.js --processing            # solo image_processing
 node dev.js --removebg              # alias
-IMAGE_PROCESSING_HOST_PORT=8003 node dev.js --processing --build
+node dev.js --processing --swagger  # quita-fondo + portal Swagger global
+IMAGE_PROCESSING_HOST_PORT=8102 node dev.js --processing --build
 ```
 
 Sin Docker:
@@ -159,11 +160,12 @@ Sin Docker:
 cd image_processing/api
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt          # o requirements-dev.txt para tests
-uvicorn app.main:app --reload --port 8002
+uvicorn app.main:app --reload --port 8102
 ```
 
-Si el 8002 está ocupado por `image_generator`, usa otro puerto
-(`IMAGE_PROCESSING_HOST_PORT=8003` con Docker, o `--port 8003` en local).
+El puerto `8102` está reservado para este servicio; si está ocupado, el lanzador
+usa el siguiente libre y lo imprime al arrancar. También puedes abrir la API desde
+el portal global: <http://localhost:8080> (ver [`../gateway/README.md`](../gateway/README.md)).
 
 > La primera petición a un modelo descarga sus pesos (decenas de MB) y tarda más.
 > En esta máquina (Ryzen 5 3500U, 2 hilos ONNX): `u2net` ~7 s,

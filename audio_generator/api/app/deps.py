@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .api_key_auth import auth_required, is_valid_token
@@ -21,11 +21,18 @@ ALLOWED_AUDIO_EXTENSIONS = frozenset({".wav", ".mp3", ".m4a", ".ogg", ".opus", "
 
 def require_token(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    x_api_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    """Exige una clave válida (`API_KEYS` o el token heredado del servicio)."""
+    """Exige una clave válida por `X-API-Key` o `Authorization: Bearer`.
+
+    El gateway inyecta `X-API-Key`; Swagger UI usa `Authorization: Bearer`.
+    """
     if not auth_required():
         return
-    if credentials is None or not is_valid_token(credentials.credentials):
+    token = (x_api_key or "").strip()
+    if not token and credentials is not None:
+        token = credentials.credentials or ""
+    if not is_valid_token(token):
         raise HTTPException(status_code=401, detail="Token de API inválido o ausente.")
 
 

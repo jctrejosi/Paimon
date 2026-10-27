@@ -18,11 +18,12 @@ Si `docker compose` no está disponible, el script aborta con un mensaje claro.
 ## Uso
 
 ```bash
-node dev.js                 # levanta los tres: audio + image + processing
+node dev.js                 # levanta todo: audio + image + processing + swagger
 node dev.js --audio         # solo audio_processing
 node dev.js --image         # solo image_generator
 node dev.js --processing    # solo image_processing
-node dev.js --all           # explícito: los tres
+node dev.js --swagger       # solo el portal Swagger global
+node dev.js --all           # explícito: todo
 node dev.js --build         # (re)construye las imágenes al levantar
 node dev.js --logs [flags]  # sigue los logs de los seleccionados (Ctrl+C sale)
 node dev.js --stop [flags]  # detiene los seleccionados (o todos)
@@ -36,15 +37,16 @@ node dev.js --help
 | `--audio` | Selecciona `audio_processing`. |
 | `--image` | Selecciona `image_generator`. |
 | `--processing` | Selecciona `image_processing`. Alias: `--removebg`, `--remove-bg`, `--image-processing`. |
-| `--all` | Selecciona los tres (equivale a no pasar flags). |
+| `--swagger` | Selecciona el portal Swagger global (`gateway/`). Alias: `--docs`, `--gateway`, `--portal`. |
+| `--all` | Selecciona todo (equivale a no pasar flags). |
 | `--build` | Añade `--build` a `docker compose up` (reconstruye imágenes). |
 | `--logs` | Sigue los logs en primer plano (`docker compose logs -f`). |
 | `--stop` | Detiene los stacks seleccionados (`docker compose down`). |
 | `--help` | Muestra la ayuda. |
 
-Los flags de selección son **combinables** (`--audio --image --processing`) y los
-modos se pueden mezclar con la selección (`--stop --image`, `--logs --audio`). Un
-**flag desconocido aborta** sin levantar nada.
+Los flags de selección son **combinables** (`--audio --image --processing --swagger`)
+y los modos se pueden mezclar con la selección (`--stop --image`, `--logs --audio`).
+Un **flag desconocido aborta** sin levantar nada.
 
 ## Puertos
 
@@ -55,16 +57,22 @@ puerto: re-ejecutar no mueve las URLs.
 
 | App | Puerto interno | Puerto de host (por defecto) | Variable |
 |-----|----------------|------------------------------|----------|
-| `audio_processing` | 8000 | 8000 | `AUDIO_HOST_PORT` |
-| `image_generator` (API) | 8000 | 8000 (8001 si hay choque) | `IMAGE_API_HOST_PORT` |
+| `audio_processing` | 8000 | 8100 | `AUDIO_HOST_PORT` |
+| `image_generator` (API) | 8000 | 8101 | `IMAGE_API_HOST_PORT` |
 | `image_generator` (ComfyUI) | 8188 | 8188 | — |
 | `image_generator` (Redis) | 6379 | 6379 | — |
 | `image_generator` (worker) | 9100 | 9100 | — |
-| `image_processing` | 8000 | 8002 | `IMAGE_PROCESSING_HOST_PORT` |
+| `image_processing` | 8000 | 8102 | `IMAGE_PROCESSING_HOST_PORT` |
+| `swagger` (portal) | — (host) | 8080 | `SWAGGER_HOST_PORT` |
 
-> Si `8001`/`8002` ya están ocupados (audio e image_generator en este equipo),
-> `image_processing` se publica en `8003`. El puerto real se imprime al levantar y
-> se puede fijar con `IMAGE_PROCESSING_HOST_PORT=8003 node dev.js --processing`.
+> Los `81xx` están reservados para Paimon y evitan los `80xx` que usan otros
+> proyectos del equipo. Aun así, el lanzador salta cualquier puerto ocupado y
+> conserva el de un contenedor que ya esté en marcha. El puerto real se imprime
+> al levantar.
+>
+> El portal Swagger usa `network_mode: host` (sin puertos publicados) para
+> alcanzar las APIs en `127.0.0.1`; escucha solo en loopback y `dev.js` le inyecta
+> los puertos reales de cada API.
 
 Las variables se pueden fijar en el entorno para forzar un puerto concreto:
 
@@ -73,8 +81,8 @@ AUDIO_HOST_PORT=9000 node dev.js --audio
 ```
 
 > Por eso los `docker-compose.yml` de cada app leen
-> `${AUDIO_HOST_PORT:-8000}`, `${IMAGE_API_HOST_PORT:-8000}` y
-> `${IMAGE_PROCESSING_HOST_PORT:-8002}`. Ejecutar `docker compose up` a mano (sin
+> `${AUDIO_HOST_PORT:-8100}`, `${IMAGE_API_HOST_PORT:-8101}` y
+> `${IMAGE_PROCESSING_HOST_PORT:-8102}`. Ejecutar `docker compose up` a mano (sin
 > esas variables) mantiene el comportamiento por defecto.
 
 ## Qué hace al levantar
@@ -109,7 +117,7 @@ flowchart TD
 ## Detener
 
 ```bash
-node dev.js --stop            # detiene los tres
+node dev.js --stop            # detiene todo
 node dev.js --stop --image    # solo image_generator
 ```
 

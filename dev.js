@@ -90,6 +90,21 @@ const PROJECTS = [
     ],
   },
   {
+    name: "voice",
+    label: "audio_generator",
+    dir: "audio_generator",
+    container: "paimon-audio-generator",
+    portEnv: "AUDIO_GEN_HOST_PORT",
+    port: 8103,
+    color: "\x1b[34m",
+    endpoints: (p) => [
+      ["API", `http://localhost:${p}`],
+      ["Swagger", `http://localhost:${p}/docs`],
+      ["OpenAPI", `http://localhost:${p}/openapi.json`],
+      ["synthesize", `POST http://localhost:${p}/synthesize`],
+    ],
+  },
+  {
     name: "swagger",
     label: "swagger global",
     dir: "gateway",
@@ -102,7 +117,7 @@ const PROJECTS = [
     color: "\x1b[33m",
     endpoints: (p) => [
       ["Swagger", `http://localhost:${p}`],
-      ["APIs", `http://localhost:${p}/  (audio, image, processing)`],
+      ["APIs", `http://localhost:${p}/  (audio, image, processing, voice)`],
     ],
   },
 ];
@@ -122,6 +137,12 @@ const PROJECT_ALIASES = {
   portal: "swagger",
   apidocs: "swagger",
   "api-docs": "swagger",
+  tts: "voice",
+  "text-to-speech": "voice",
+  "voice-generator": "voice",
+  voice_generator: "voice",
+  "audio-generator": "voice",
+  audio_generator: "voice",
 };
 
 // Puertos fijos que no deben asignarse por reasignación automática.
@@ -300,6 +321,7 @@ const GATEWAY_TARGETS = {
   audio: "AUDIO_PORT",
   image: "IMAGE_PORT",
   processing: "PROCESSING_PORT",
+  voice: "VOICE_PORT",
 };
 
 /**
@@ -426,6 +448,8 @@ function printCommands() {
     ["node dev.js --image", "solo image_generator"],
     ["node dev.js --processing", "solo image_processing (quita-fondo)"],
     ["node dev.js --removebg", "alias de --processing"],
+    ["node dev.js --voice", "solo audio_generator (texto→voz)"],
+    ["node dev.js --tts", "alias de --voice"],
     ["node dev.js --swagger", "portal Swagger global (alias --docs, --gateway)"],
     ["node dev.js --all", "todo (apps + Swagger)"],
     ["node dev.js --build", "reconstruye las imágenes al levantar"],
@@ -450,6 +474,8 @@ function printHelp() {
   out.push("  --image            solo image_generator    (API :8101 + ComfyUI :8188)");
   out.push("  --processing       solo image_processing   (API :8102, POST /remove-bg)");
   out.push("                       alias: --removebg, --remove-bg, --image-processing");
+  out.push("  --voice            solo audio_generator    (API :8103, POST /synthesize)");
+  out.push("                       alias: --tts, --text-to-speech, --audio-generator");
   out.push("  --swagger          portal Swagger global   (UI :8080, todas las APIs)");
   out.push("                       alias: --docs, --gateway, --portal");
   out.push("  --all              todo (apps + Swagger)");
@@ -461,12 +487,14 @@ function printHelp() {
   out.push("  --help             esta ayuda");
   out.push("");
   out.push("PUERTOS");
-  out.push("  Cada API usa :8000 internamente. En el host se publican en 8100/8101/8102");
+  out.push("  Cada API usa :8000 internamente. En el host se publican en 8100–8103");
   out.push("  (o el siguiente libre), saltando los ya ocupados.");
-  out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT e IMAGE_PROCESSING_HOST_PORT.");
+  out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT, IMAGE_PROCESSING_HOST_PORT");
+  out.push("  y AUDIO_GEN_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");
-  out.push("  node dev.js                    → audio + image + processing + swagger");
+  out.push("  node dev.js                    → audio + image + processing + voice + swagger");
+  out.push("  node dev.js --voice --swagger  → texto→voz + portal Swagger");
   out.push("  node dev.js --audio --build    → solo audio, reconstruyendo la imagen");
   out.push("  node dev.js --processing --swagger → quita-fondo + portal Swagger");
   out.push("  node dev.js --logs --image     → sigue los logs de image_generator");

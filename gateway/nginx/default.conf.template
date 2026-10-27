@@ -8,6 +8,10 @@ server {
     index index.html;
     client_max_body_size 25m;
 
+    # El portal inyecta la clave compartida (primera de API_KEYS) para que
+    # "Try it out" funcione sin pegar el token en cada API. "-" = sin clave.
+    set $paimon_api_key "${API_KEY}";
+
     location / {
         try_files $uri /index.html;
     }
@@ -27,6 +31,12 @@ server {
     # image_processing (remove-bg)
     location /processing/ {
         proxy_pass http://127.0.0.1:${PROCESSING_PORT}/;
+        include /etc/nginx/paimon-proxy.inc;
+    }
+
+    # audio_generator (texto→voz)
+    location /voice/ {
+        proxy_pass http://127.0.0.1:${VOICE_PORT}/;
         include /etc/nginx/paimon-proxy.inc;
     }
 }

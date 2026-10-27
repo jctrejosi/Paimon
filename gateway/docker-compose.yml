@@ -16,6 +16,7 @@ services:
       AUDIO_PORT: "${AUDIO_PORT:-1}"
       IMAGE_PORT: "${IMAGE_PORT:-1}"
       PROCESSING_PORT: "${PROCESSING_PORT:-1}"
+      VOICE_PORT: "${VOICE_PORT:-1}"
       # Clave compartida que el proxy añade a cada petición. "-" = sin clave.
       API_KEY: "${API_KEY:--}"
     healthcheck:

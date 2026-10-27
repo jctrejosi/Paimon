@@ -10,6 +10,7 @@ decisiones y roadmap) ver [`../plans/`](../plans/README.md).
 | [`apps/audio_processing.md`](apps/audio_processing.md) | App de transcripción y preprocesamiento de audio. |
 | [`apps/image_generator.md`](apps/image_generator.md) | App de generación y edición de imágenes. |
 | [`apps/image_processing.md`](apps/image_processing.md) | App de procesamiento de imágenes (quita-fondo). |
+| [`apps/swagger.md`](apps/swagger.md) | Portal Swagger global (`gateway/`): todas las APIs en un solo origen. |
 | [`operations.md`](operations.md) | Operación común: puertos, tokens, logs, build y problemas típicos. |
 | [`roadmap.md`](roadmap.md) | Módulos previstos a futuro. |
 | [`reference/artcraft.md`](reference/artcraft.md) | Revisión del repo público ArtCraft (referencia para `image_processor`). |
@@ -25,13 +26,14 @@ decisiones y roadmap) ver [`../plans/`](../plans/README.md).
 ## Arranque en 30 segundos
 
 ```bash
-# levanta los dos aplicativos (Docker Compose)
+# levanta todo (apps + portal Swagger)
 node dev.js
 
-# o uno solo
+# o una parte
 node dev.js --audio
 node dev.js --image
 node dev.js --processing
+node dev.js --swagger --processing
 ```
 
 Cada app tiene además su propio `README.md` dentro de la capa de código (p. ej.

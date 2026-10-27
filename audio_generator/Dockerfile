@@ -17,6 +17,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Torch CPU primero: evita que `kokoro` arrastre la build CUDA de varios GB
+# (en Linux, el índice por defecto de PyPI sirve torch con CUDA).
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY api/requirements.txt ./
 RUN pip install -r requirements.txt
 
