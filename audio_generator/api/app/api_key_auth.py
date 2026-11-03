@@ -68,8 +68,21 @@ def is_valid_token(token: str) -> bool:
 def _header(scope, name: bytes) -> str:
     for key, value in scope.get("headers", []):
         if key.lower() == name:
-            return value.decode("latin-1").strip()
+            # Las cabeceras se envían como UTF-8 por los clientes reales; el
+            # tracto latin-1 de ASGI corrompería claves con acentos.
+            try:
+                return value.decode("utf-8").strip()
+            except UnicodeDecodeError:
+                return value.decode("latin-1").strip()
     return ""
+
+
+def _query(scope) -> str:
+    raw = scope.get("query_string", b"")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
 
 
 def token_from_request(scope) -> str:
@@ -83,7 +96,7 @@ def token_from_request(scope) -> str:
         return value.strip()
 
     if _flag("API_ALLOW_QUERY_TOKEN"):
-        params = parse_qs(scope.get("query_string", b"").decode("latin-1"))
+        params = parse_qs(_query(scope))
         token = (params.get("token") or params.get("api_key") or [""])[0].strip()
         if token:
             return token

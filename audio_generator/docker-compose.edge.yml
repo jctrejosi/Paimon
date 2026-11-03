@@ -1,0 +1,16 @@
+# Despliegue con el EDGE COMPARTIDO (`edge_caddy`): el servicio se une a la red
+# `shared_edge` para que el edge lo alcance por nombre. Los puertos del compose
+# base siguen en 127.0.0.1 (nada público en el host).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.edge.yml up -d
+
+services:
+  audio:
+    networks:
+      - default
+      - shared_edge
+
+networks:
+  shared_edge:
+    external: true
+    name: shared_edge
