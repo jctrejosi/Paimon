@@ -51,7 +51,10 @@ jobs:
   deploy:
     name: Desplegar en el VPS
     needs: ci
+    # El despliegue automático lo hace el timer del VPS (jcti-autodeploy).
+    # Con runner self-hosted, define SELF_HOSTED_DEPLOY=true en el repo.
     if: >-
+      vars.SELF_HOSTED_DEPLOY == 'true' &&
       needs.ci.result == 'success' &&
       github.ref == 'refs/heads/dev' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
