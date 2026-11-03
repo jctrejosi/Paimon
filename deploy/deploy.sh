@@ -53,7 +53,7 @@ wait_healthy() {
       '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
       "$name" 2>/dev/null || true)"
     case "$status" in
-      healthy) log "$name healthy."; return 0 ;;
+      healthy|running) log "$name listo ($status)."; return 0 ;;
       unhealthy|exited|dead)
         docker logs --tail 100 "$name" 2>&1 || true
         die "$name quedó en estado '$status'"
