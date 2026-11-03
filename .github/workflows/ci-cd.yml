@@ -63,6 +63,6 @@ jobs:
     steps:
       - name: Desplegar commit
         env:
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/mnt/c/Users/Desarrolo4/Documents/paimon' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/deploy/Paimon' }}
           TARGET_SHA: ${{ github.sha }}
         run: bash "$DEPLOY_PATH/deploy/deploy.sh" "$TARGET_SHA"

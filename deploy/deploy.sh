@@ -13,7 +13,7 @@
 # ============================================================
 set -Eeuo pipefail
 
-ROOT="${DEPLOY_PATH:-/mnt/c/Users/Desarrolo4/Documents/paimon}"
+ROOT="${DEPLOY_PATH:-/home/deploy/Paimon}"
 TARGET="${1:-origin/dev}"
 
 log()  { printf '[paimon-deploy] %s\n' "$*"; }
