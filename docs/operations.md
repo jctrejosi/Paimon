@@ -76,6 +76,32 @@ cada servicio:
 En SSE (`EventSource`) la clave va como `?token=<clave>` porque no admite
 cabeceras.
 
+## Producción (servidor jcti)
+
+Las APIs se publican en **https://paimon.jcti.xyz** detrás del edge compartido
+(`edge_caddy`). Cada servicio mantiene su propio compose; el override
+`docker-compose.edge.yml` lo une a la red externa `shared_edge` y los puertos
+siguen en `127.0.0.1` del host.
+
+```bash
+cd /home/deploy/Paimon/<servicio>
+docker compose -f docker-compose.yml -f docker-compose.edge.yml up -d
+```
+
+| Prefijo público | Servicio |
+|---|---|
+| `/audio/*` | `audio_processing` (transcripción) |
+| `/image/*` | `image_generator` (API; ComfyUI y Redis quedan internos) |
+| `/processing/*` | `image_processing` (remove-bg) |
+| `/voice/*` | `audio_generator` (TTS) |
+
+```bash
+curl -H 'X-API-Key: <clave>' https://paimon.jcti.xyz/audio/health
+```
+
+El portal Swagger (`gateway/`) es herramienta local: no se despliega en el
+servidor.
+
 ## Logs
 
 - **Lanzador**: `logs/<app>.log` (salida de `docker compose up`).
