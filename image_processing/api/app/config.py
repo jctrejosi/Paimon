@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # Token opcional; si se define, `/remove-bg` lo exige como
     # `Authorization: Bearer <token>`.
     image_processing_api_token: str | None = None
+    # Prefijo público cuando el proxy publica la API bajo un subpath y lo
+    # reescribe (el edge sirve /processing/* → raíz). Solo cambia las URLs que
+    # FastAPI anuncia (Swagger, /openapi.json y `servers`); en local, vacío.
+    image_processing_root_path: str = ""
     # Tamaño máximo de subida, en MB.
     image_processing_max_upload_mb: float = 20.0
     # Tope de píxeles (ancho × alto) para evitar bombas de descompresión.

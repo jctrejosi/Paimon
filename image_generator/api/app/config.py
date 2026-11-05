@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Token opcional; si se define, `/generate` lo exige como
     # `Authorization: Bearer <token>`.
     image_api_token: str | None = None
+    # Prefijo público cuando el proxy publica la API bajo un subpath y lo
+    # reescribe (el edge sirve /image/* → raíz). Solo cambia las URLs que
+    # FastAPI anuncia (Swagger, /openapi.json y `servers`); en local, vacío.
+    image_root_path: str = ""
     # Directorio donde se guardan las imágenes servidas por URL.
     output_dir: Path = Path("outputs")
     # URL base pública para construir enlaces absolutos (útil detrás de proxy).

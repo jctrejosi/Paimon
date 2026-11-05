@@ -74,6 +74,9 @@ app = FastAPI(
     title="Paimon Image Generator",
     version="0.4.0",
     description="Generación y edición de imágenes con ComfyUI local o proveedores externos.",
+    # El edge publica la API en /image/* y quita el prefijo: sin esto, Swagger
+    # pediría /openapi.json en la raíz y no cargaría.
+    root_path=settings.image_root_path,
     lifespan=lifespan,
 )
 

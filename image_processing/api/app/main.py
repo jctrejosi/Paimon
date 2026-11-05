@@ -48,6 +48,9 @@ app = FastAPI(
     title="Paimon Image Processing",
     version="0.1.0",
     description="Procesamiento local de imágenes. Primera función: quitar el fondo.",
+    # El edge publica la API en /processing/* y quita el prefijo: sin esto,
+    # Swagger pediría /openapi.json en la raíz y no cargaría.
+    root_path=settings.image_processing_root_path,
     lifespan=lifespan,
 )
 

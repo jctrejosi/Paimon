@@ -57,7 +57,7 @@ Genera cada una con `openssl rand -hex 32`.
 |---|---|
 | `API_AUTH_REQUIRED=0` | Desactiva la comprobación (solo desarrollo local). |
 | `API_PUBLIC_DOCS=1` | Deja `/docs`, `/redoc` y `/openapi.json` sin clave. |
-| `API_ROOT_PATH=/audio` | Prefijo público en el edge: Swagger pide el esquema en `/audio/openapi.json`. |
+| `AUDIO_ROOT_PATH=/audio`<br>`IMAGE_ROOT_PATH=/image`<br>`IMAGE_PROCESSING_ROOT_PATH=/processing` | Prefijo público en el edge: Swagger pide el esquema en `<prefijo>/openapi.json`. Vacío en local. |
 | `API_ALLOW_QUERY_TOKEN=1` | Acepta también `?token=` (solo `image_generator`, por SSE). |
 
 Si `API_AUTH_REQUIRED=1` y `API_KEYS` está vacío, las APIs responden `503` en

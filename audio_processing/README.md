@@ -56,7 +56,7 @@ módulos con varios motores (p. ej. `denoise`, `diarize`) guardan sus backends e
 
 Ambas APIs exponen una interfaz interactiva: **Swagger UI** en `/docs` (y Redoc
 en `/redoc`). En el VPS el edge las publica bajo su prefijo (la transcripción
-en `https://paimon.jcti.xyz/audio/docs`), así que `API_ROOT_PATH=/audio` hace
+en `https://paimon.jcti.xyz/audio/docs`), así que `AUDIO_ROOT_PATH=/audio` hace
 que Swagger pida el esquema en `/audio/openapi.json`. Con
 `API_PUBLIC_DOCS=1` la documentación queda visible sin clave, mientras las
 rutas de la API siguen exigiéndola: usa el botón **Authorize** (o la cabecera

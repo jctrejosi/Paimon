@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     # Prefijo público cuando un proxy publica la API bajo un subpath y lo
     # reescribe (el edge sirve /audio/* → raíz). Solo cambia las URLs que
     # FastAPI anuncia (Swagger, /openapi.json y `servers` del OpenAPI); las
-    # rutas internas siguen en la raíz.
-    api_root_path: str = ""
+    # rutas internas siguen en la raíz. Se deja vacío en local.
+    audio_root_path: str = ""
     # Tamaño máximo de subida, en MB.
     audio_max_upload_mb: float = 25.0
     # Idioma usado cuando la petición no especifica uno. `auto` fuerza la

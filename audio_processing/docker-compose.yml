@@ -30,9 +30,9 @@ services:
       LOCAL_WHISPER_MODEL: "${LOCAL_WHISPER_MODEL:-small}"
       AUDIO_DEFAULT_LANGUAGE: "${AUDIO_DEFAULT_LANGUAGE:-es}"
       AUDIO_API_TOKEN: "${AUDIO_API_TOKEN:-}"
-      # API_ROOT_PATH (prefijo con el que el edge publica /audio) llega por
-      # `env_file` desde ../.env. No declararlo aquí con ${...}: Compose no
-      # interpola variables de env_file y lo dejaría vacío.
+      # AUDIO_ROOT_PATH (prefijo público /audio en el edge) llega por `env_file`
+      # desde ../.env: Compose no interpola variables de env_file, así que no
+      # hay que declararlo aquí (quedaría vacío).
       # Token de Hugging Face (necesario solo para diarización con pyannote).
       HF_TOKEN: "${HF_TOKEN:-}"
     volumes:
