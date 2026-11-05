@@ -50,6 +50,9 @@ app = FastAPI(
     title="Paimon Audio Processing",
     version="0.2.0",
     description="Transcripción local (voz→texto) y preprocesamiento modular de audio.",
+    # El edge publica la API en /audio/* y quita el prefijo antes de reenviar:
+    # sin esto, Swagger pediría /openapi.json en la raíz y no cargaría.
+    root_path=settings.api_root_path,
     lifespan=lifespan,
 )
 

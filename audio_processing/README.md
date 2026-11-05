@@ -55,8 +55,12 @@ módulos con varios motores (p. ej. `denoise`, `diarize`) guardan sus backends e
 ## Endpoints
 
 Ambas APIs exponen una interfaz interactiva: **Swagger UI** en `/docs` (y Redoc
-en `/redoc`). Si configuras `AUDIO_API_TOKEN`, usa el botón **Authorize** de
-Swagger para probar las rutas protegidas.
+en `/redoc`). En el VPS el edge las publica bajo su prefijo (la transcripción
+en `https://paimon.jcti.xyz/audio/docs`), así que `API_ROOT_PATH=/audio` hace
+que Swagger pida el esquema en `/audio/openapi.json`. Con
+`API_PUBLIC_DOCS=1` la documentación queda visible sin clave, mientras las
+rutas de la API siguen exigiéndola: usa el botón **Authorize** (o la cabecera
+`X-API-Key`) para probarlas.
 
 ### Transcripción
 
@@ -119,9 +123,14 @@ proveedor por defecto. `text` devuelve texto plano; `verbose_json` añade
 - Tamaño máximo: `AUDIO_MAX_UPLOAD_MB` (25 MB por defecto) → `413` si se supera;
   `415` si la extensión no está soportada; `400` si está vacío o no se puede
   decodificar.
-- Si `AUDIO_API_TOKEN` está definido, `/transcribe` y `/v1/audio/transcriptions`
-  exigen `Authorization: Bearer <token>` (`401` si falta o no coincide); las
-  rutas de preprocesamiento aún no lo exigen.
+- Todas las rutas salvo los healthchecks (`/health`, `/healthz`, `/live`,
+  `/ready`) exigen una clave válida en `API_KEYS`: `X-API-Key: <clave>` o
+  `Authorization: Bearer <clave>` (`401` si falta o no coincide). Esto incluye
+  `/transcribe`, `/v1/audio/transcriptions` y todo el preprocesamiento.
+- Si `API_AUTH_REQUIRED=1` y `API_KEYS` está vacío, la API responde `503`
+  (fail-closed).
+- `API_PUBLIC_DOCS=1` deja sin clave solo `/docs`, `/redoc`, `/openapi.json`
+  y `/docs/oauth2-redirect`.
 
 ## Módulos
 

@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # Token opcional; si se define, todas las rutas (salvo /health) lo exigen
     # como `Authorization: Bearer <token>`.
     audio_api_token: str | None = None
+    # Prefijo público cuando un proxy publica la API bajo un subpath y lo
+    # reescribe (el edge sirve /audio/* → raíz). Solo cambia las URLs que
+    # FastAPI anuncia (Swagger, /openapi.json y `servers` del OpenAPI); las
+    # rutas internas siguen en la raíz.
+    api_root_path: str = ""
     # Tamaño máximo de subida, en MB.
     audio_max_upload_mb: float = 25.0
     # Idioma usado cuando la petición no especifica uno. `auto` fuerza la

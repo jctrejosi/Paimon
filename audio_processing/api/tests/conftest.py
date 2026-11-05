@@ -66,6 +66,17 @@ def wav() -> bytes:
     return make_wav()
 
 
+@pytest.fixture(autouse=True)
+def _no_api_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Las pruebas ejercitan las rutas, no la autenticación.
+
+    `APIKeyMiddleware` lee el entorno en cada petición; sin esto, la suite
+    fallaría con 503 al no haber `API_KEYS` en el entorno de pruebas.
+    """
+    monkeypatch.delenv("API_KEYS", raising=False)
+    monkeypatch.setenv("API_AUTH_REQUIRED", "0")
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     get_settings.cache_clear()
