@@ -85,12 +85,32 @@ def expected_keys() -> list[str]:
     return keys
 
 
+def accepted_encodings(key: str) -> list[bytes]:
+    """Bytes aceptados para una clave configurada.
+
+    Una clave con acentos llega en codificaciones distintas según el cliente:
+    los navegadores envían la cabecera como ByteString (latin-1) y curl u otros
+    clientes envían UTF-8. Se aceptan las dos formas para que Swagger UI y los
+    scripts funcionen con la misma clave.
+    """
+    variants = [key.encode("utf-8")]
+    try:
+        latin1 = key.encode("latin-1")
+    except UnicodeEncodeError:
+        pass
+    else:
+        if latin1 not in variants:
+            variants.append(latin1)
+    return variants
+
+
 def is_valid_token(token: str | bytes) -> bool:
     """Compara en tiempo constante contra todas las claves configuradas.
 
-    Se comparan bytes: las cabeceras HTTP no son UTF-8, así que una clave con
-    acentos llega como bytes. Al recibir un `str` (ya decodificado como latin-1
-    por Starlette) se re-codifica a latin-1 para recuperar los bytes originales.
+    Se comparan bytes: las cabeceras HTTP no declaran codificación, así que una
+    clave con acentos puede llegar como UTF-8 (curl) o como latin-1 (navegador).
+    Al recibir un `str` (ya decodificado como latin-1 por Starlette) se
+    re-codifica a latin-1 para recuperar los bytes originales.
     """
     if not token:
         return False
@@ -101,7 +121,11 @@ def is_valid_token(token: str | bytes) -> bool:
             candidate = token.encode("utf-8")
     else:
         candidate = token
-    return any(hmac.compare_digest(candidate, key.encode("utf-8")) for key in expected_keys())
+    return any(
+        hmac.compare_digest(candidate, variant)
+        for key in expected_keys()
+        for variant in accepted_encodings(key)
+    )
 
 
 def _header(scope, name: bytes) -> bytes:

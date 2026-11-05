@@ -51,7 +51,9 @@ curl -H 'Authorization: Bearer clave1' https://paimon.jcti.xyz/image/docs
 ```
 
 Varias claves separadas por comas permiten revocar una sin afectar al resto.
-Genera cada una con `openssl rand -hex 32`.
+Genera cada una con `openssl rand -hex 32`. Una clave con acentos se acepta en
+UTF-8 (curl, scripts) y en latin-1 (navegadores y **Try it out** de Swagger),
+porque cada cliente codifica la cabecera a su manera.
 
 | Ajuste | Efecto |
 |---|---|

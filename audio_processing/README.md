@@ -127,6 +127,8 @@ proveedor por defecto. `text` devuelve texto plano; `verbose_json` añade
   `/ready`) exigen una clave válida en `API_KEYS`: `X-API-Key: <clave>` o
   `Authorization: Bearer <clave>` (`401` si falta o no coincide). Esto incluye
   `/transcribe`, `/v1/audio/transcriptions` y todo el preprocesamiento.
+  Una clave con acentos se acepta tanto en UTF-8 (curl) como en latin-1
+  (navegadores, Swagger UI).
 - Si `API_AUTH_REQUIRED=1` y `API_KEYS` está vacío, la API responde `503`
   (fail-closed).
 - `API_PUBLIC_DOCS=1` deja sin clave solo `/docs`, `/redoc`, `/openapi.json`
