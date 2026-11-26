@@ -15,7 +15,12 @@ httpx
 # Embeddings locales en CPU (modelo ONNX). Descarga perezosa y cacheada.
 fastembed
 
-# Extracción de documentos
-pypdf
-python-docx
-openpyxl
+# Extracción de documentos (multi-formato)
+pymupdf          # PDF: extracción word-level
+pdfplumber       # PDF: tablas
+python-docx      # DOCX
+python-pptx      # PPTX
+openpyxl         # XLSX
+xlrd             # XLS legacy
+pytesseract      # OCR (requiere binario tesseract-ocr)
+pillow           # OCR: imagen en memoria

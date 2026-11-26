@@ -50,9 +50,13 @@ class Settings(BaseSettings):
 
     # --- Embeddings -------------------------------------------------------
     embedding_provider: EmbeddingProviderName = "fastembed"
-    # Modelos locales de fastembed (CPU). Ej. multilingüe:
-    #   intfloat/multilingual-e5-small | BAAI/bge-small-en-v1.5
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # Modelos locales de fastembed (CPU). Multilingüe y ligero por defecto:
+    #   sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    # Alternativas soportadas: intfloat/multilingual-e5-large,
+    #   jinaai/jina-embeddings-v2-base-es, BAAI/bge-small-en-v1.5
+    embedding_model: str = (
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
     # Solo proveedor `hashing` (dimensiones del vector). Los demás lo ignoran.
     hashing_dimensions: int = 512
     fastembed_cache_dir: Path = Path("models")

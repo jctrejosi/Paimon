@@ -4,9 +4,19 @@
 # Python 3.12 (wheels de onnxruntime/fastembed probados).
 FROM python:3.12-slim
 
-# onnxruntime (fastembed) usa OpenMP.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libgomp1 \
+# onnxruntime (fastembed) usa OpenMP. Además, si INSTALL_EXTRAS=1 se instalan
+# LibreOffice headless + Tesseract para extraer "cualquier documento" (doc, ppt,
+# pages, epub, msg…) y OCR de PDFs escaneados. Con INSTALL_EXTRAS=0 la imagen es
+# más pequeña, pero se pierden esos formatos.
+ARG INSTALL_EXTRAS=1
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && if [ "$INSTALL_EXTRAS" = "1" ]; then \
+         apt-get install -y --no-install-recommends \
+           libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
+           fonts-dejavu fonts-liberation \
+           tesseract-ocr tesseract-ocr-eng tesseract-ocr-spa \
+           poppler-utils ; \
+       fi \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \

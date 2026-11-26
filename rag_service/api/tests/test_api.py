@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.conftest import Env
 
 TOMATO_TEXT = """CULTIVO DE TOMATE (Solanum lycopersicum)
@@ -222,6 +224,25 @@ async def test_embeddings_endpoint(env: Env) -> None:
     data = openai_format.json()["data"]
     assert data[0]["object"] == "embedding"
     assert data[0]["index"] == 0
+
+
+async def test_ingest_pdf_with_text_layer(env: Env) -> None:
+    fitz = pytest.importorskip("fitz")
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "El tomate necesita 24 C y riego moderado")
+    data = doc.tobytes()
+    doc.close()
+
+    response = await env.client.post(
+        "/ingest",
+        files={"file": ("catalogo.pdf", data, "application/pdf")},
+        data={"bot_id": "plant-service"},
+    )
+    assert response.status_code == 201, response.text
+    detail = await env.client.get(f"/sources/{response.json()['source_id']}")
+    chunks = detail.json()["documents"][0]["chunks"]
+    assert any("tomate" in c["content_preview"].lower() for c in chunks)
 
 
 async def test_conversations(env: Env) -> None:

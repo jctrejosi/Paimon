@@ -30,13 +30,25 @@ header `X-RAG-Project` (o `?project=`) elige el espacio; sin él se usa
 | `POST` | `/search` | Búsqueda semántica. `?bot_id=` |
 | `GET` | `/context` | Contexto concatenado para un prompt. |
 | `POST` | `/embeddings` · `/v1/embeddings` | Generación de embeddings (propio / compatible OpenAI). |
+| `GET` | `/health` | Estado y proveedor de embeddings. |
 
 Todas las rutas aceptan `X-RAG-Project` (o `?project=`) para elegir el espacio
 físico del proyecto.
-| `GET` | `/health` | Estado y proveedor de embeddings. |
 
 La API es **compatible** con la del antiguo `knowledge-service`, así un
 consumidor solo cambia su URL base.
+
+## Extracción de documentos
+
+Portada del `knowledge-service` del chatbot:
+
+- **PDF**: PyMuPDF → pdfplumber → **OCR Tesseract** (escaneados), por calidad.
+- **Office**: DOCX, PPTX, XLSX, XLS legacy, ODF (odt/ods/odp).
+- **RTF**, CSV/TSV, ZIP (incluye anidado) y texto/código.
+- **LibreOffice headless** para `.doc`, `.ppt`, `.pages`, `.epub`, `.msg`, etc.
+
+La imagen Docker instala LibreOffice + Tesseract (eng/spa) por defecto;
+`--build-arg INSTALL_EXTRAS=0` genera una imagen más ligera sin esos formatos.
 
 ## Embeddings
 

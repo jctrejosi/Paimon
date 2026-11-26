@@ -49,6 +49,22 @@ WhatsApp).
   así el mismo código funciona en ambos motores.
 - **Reranking** opcional con DeepSeek (`DEEPSEEK_API_KEY`).
 
+### Extracción de documentos
+
+Portado del `knowledge-service` del chatbot (pipeline completo):
+
+- **PDF**: PyMuPDF (word-level) → pdfplumber (tablas) → **OCR Tesseract** para
+  PDFs escaneados, eligiendo el resultado de mayor calidad.
+- **Office**: DOCX (`python-docx`), PPTX (`python-pptx`), XLSX (`openpyxl`),
+  XLS legacy (`xlrd`), ODF (`odt`/`ods`/`odp`).
+- **RTF**, **CSV/TSV**, **ZIP** (incluye ZIP anidado) y texto/código (md, html,
+  json, yaml, xml, py, js, sql…).
+- **LibreOffice headless** como comodín universal (`.doc`, `.ppt`, `.pages`,
+  `.epub`, `.msg`, `.mht`…), si está instalado.
+
+La imagen Docker instala LibreOffice + Tesseract (eng/spa) por defecto. Para una
+imagen más ligera sin esos formatos: `docker build --build-arg INSTALL_EXTRAS=0 .`
+
 ## Endpoints
 
 Compatible con la API del antiguo `knowledge-service`.
@@ -107,7 +123,7 @@ compartidas (`API_KEYS`, `API_AUTH_REQUIRED`, `API_PUBLIC_DOCS`) viven en el
 | `SCHEMA_PREFIX` | `rag_` | Prefijo de los schemas PostgreSQL por proyecto. |
 | `PROJECT_DATA_DIR` | `data/projects` | Directorio de archivos SQLite por proyecto. |
 | `EMBEDDING_PROVIDER` | `fastembed` | `fastembed` \| `openai` \| `hashing`. |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Modelo de embeddings. Para español, `intfloat/multilingual-e5-small`. |
+| `EMBEDDING_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Modelo de embeddings (multilingüe). Alternativas: `intfloat/multilingual-e5-large`, `jinaai/jina-embeddings-v2-base-es`. |
 | `EMBEDDING_API_KEY` | *(vacío)* | Necesaria con `openai`. |
 | `EMBEDDING_BASE_URL` | `https://api.openai.com/v1` | Endpoint compatible OpenAI. |
 | `FASTEMBED_CACHE_DIR` | `models` | Caché de modelos (volumen). |
@@ -117,6 +133,7 @@ compartidas (`API_KEYS`, `API_AUTH_REQUIRED`, `API_PUBLIC_DOCS`) viven en el
 | `DEEPSEEK_API_KEY` | *(vacío)* | Activa el reranking. |
 | `RAG_ROOT_PATH` | *(vacío)* | Prefijo público (`/rag`) cuando se publica tras el edge. |
 | `RAG_MAX_UPLOAD_MB` | `50` | Tamaño máximo de subida. |
+| `INSTALL_EXTRAS` | `1` | Build-arg: instala LibreOffice + Tesseract (`0` = imagen ligera). |
 
 ## Ejecución
 

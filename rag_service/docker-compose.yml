@@ -27,6 +27,8 @@ services:
       args:
         PUID: "${PUID:-1001}"
         PGID: "${PGID:-1001}"
+        # 1 = LibreOffice + Tesseract (extracción universal + OCR).
+        INSTALL_EXTRAS: "${INSTALL_EXTRAS:-1}"
     image: paimon-rag:local
     container_name: paimon-rag
     # Solo en loopback: sin autenticación por defecto; no exponer a la red.
@@ -47,15 +49,11 @@ services:
       SCHEMA_PREFIX: "${SCHEMA_PREFIX:-rag_}"
       # Proveedor de embeddings y modelo. `fastembed` es local-first (CPU).
       EMBEDDING_PROVIDER: "${EMBEDDING_PROVIDER:-fastembed}"
-      EMBEDDING_MODEL: "${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}"
-      EMBEDDING_API_KEY: "${EMBEDDING_API_KEY:-}"
-      EMBEDDING_BASE_URL: "${EMBEDDING_BASE_URL:-https://api.openai.com/v1}"
-      # Reranking opcional.
-      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
-      DEEPSEEK_BASE_URL: "${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
-      DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-deepseek-chat}"
+      EMBEDDING_MODEL: "${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}"
+      # DEEPSEEK_API_KEY / EMBEDDING_API_KEY / EMBEDDING_BASE_URL / RAG_ROOT_PATH
+      # se toman de ../.env (env_file) si existen; aquí no se declaran para no
+      # pisarlos con una interpolación vacía.
       # Prefijo público cuando el edge lo publica en /rag.
-      RAG_ROOT_PATH: "${RAG_ROOT_PATH:-}"
     volumes:
       # Modelos de embeddings (volumen de datos, no se hornean).
       - ./api/models:/models
