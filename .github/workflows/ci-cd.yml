@@ -36,15 +36,17 @@ jobs:
             audio_processing/api/app/deps.py \
             image_generator/api/app/main.py \
             image_processing/api/app/main.py \
-            image_processing/api/app/deps.py
+            image_processing/api/app/deps.py \
+            rag_service/api/app/main.py \
+            rag_service/api/app/routes.py
 
       - name: Sintaxis del script de despliegue
         run: bash -n deploy/deploy.sh
 
-      - name: Validar los tres compose
+      - name: Validar los compose
         run: |
           touch .env
-          for d in audio_processing image_generator image_processing; do
+          for d in audio_processing image_generator image_processing rag_service; do
             docker compose --project-directory "$d" -f "$d/docker-compose.yml" config --quiet
           done
 

@@ -8,6 +8,7 @@ Un único portal que reúne las APIs de Paimon en **un solo origen**:
 | `/image/` | `image_generator` | `127.0.0.1:<IMAGE_PORT>` |
 | `/processing/` | `image_processing` (remove-bg) | `127.0.0.1:<PROCESSING_PORT>` |
 | `/voice/` | `audio_generator` (texto→voz) | `127.0.0.1:<VOICE_PORT>` |
+| `/rag/` | `rag_service` (embeddings + búsqueda) | `127.0.0.1:<RAG_PORT>` |
 
 Abre `http://localhost:8080` y elige la API en el selector de arriba a la derecha.
 
@@ -16,7 +17,7 @@ Abre `http://localhost:8080` y elige la API en el selector de arriba a la derech
 - **nginx** sirve Swagger UI (assets locales, sin CDN) y hace de **proxy inverso**
   hacia las APIs publicadas en el loopback del host.
 - Al compartir origen, no hacen falta reglas CORS y el botón *Try it out*
-  funciona directamente sobre `/audio`, `/image`, `/processing` y `/voice`.
+  funciona directamente sobre `/audio`, `/image`, `/processing`, `/voice` y `/rag`.
 - Corre con `network_mode: host` y escucha solo en `127.0.0.1`, así que no se
   expone a la LAN. Node `dev.js` elige un puerto libre (`8080` por defecto) y le
   pasa los puertos reales de cada API: no hay puertos fijos que mantener.

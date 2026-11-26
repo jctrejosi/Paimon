@@ -34,7 +34,10 @@ Paimon/
 │   ├── api/                  #   fachada HTTP (FastAPI) + worker + tests
 │   ├── ComfyUI/              #   submódulo: backend local de difusión
 │   └── Dockerfile / docker-compose.yml
-└── image_processing/         # app: procesamiento de imágenes (quita-fondo)
+├── image_processing/         # app: procesamiento de imágenes (quita-fondo)
+│   ├── api/                  #   código de la API (FastAPI) + tests
+│   └── Dockerfile / docker-compose.yml
+└── rag_service/              # app: base de conocimiento + embeddings (RAG)
     ├── api/                  #   código de la API (FastAPI) + tests
     └── Dockerfile / docker-compose.yml
 
@@ -54,11 +57,13 @@ gateway/                      # portal Swagger global (nginx + Swagger UI)
 | **audio_processing** | `audio_processing/` | Transcripción (voz→texto) y preprocesamiento modular de audio. | API `8100` |
 | **image_generator** | `image_generator/` | Generación/edición de imágenes (ComfyUI local o proveedores cloud). | API `8101`, ComfyUI `8188`, Redis `6379` |
 | **image_processing** | `image_processing/` | Procesamiento de imágenes local (quita-fondo). | API `8102` |
+| **rag_service** | `rag_service/` | Base de conocimiento central: ingesta, embeddings y búsqueda semántica. | API `8104`, PostgreSQL |
 | **swagger** | `gateway/` | Portal Swagger global con todas las APIs en un origen. | `8080` |
 
 Detalle en [`apps/audio_processing.md`](apps/audio_processing.md),
 [`apps/image_generator.md`](apps/image_generator.md),
-[`apps/image_processing.md`](apps/image_processing.md) y
+[`apps/image_processing.md`](apps/image_processing.md),
+[`apps/rag_service.md`](apps/rag_service.md) y
 [`apps/swagger.md`](apps/swagger.md).
 
 ## Requisitos

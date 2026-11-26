@@ -22,6 +22,7 @@ node dev.js                 # levanta todo: audio + image + processing + swagger
 node dev.js --audio         # solo audio_processing
 node dev.js --image         # solo image_generator
 node dev.js --processing    # solo image_processing
+node dev.js --rag           # solo rag_service
 node dev.js --swagger       # solo el portal Swagger global
 node dev.js --all           # explícito: todo
 node dev.js --build         # (re)construye las imágenes al levantar
@@ -37,6 +38,7 @@ node dev.js --help
 | `--audio` | Selecciona `audio_processing`. |
 | `--image` | Selecciona `image_generator`. |
 | `--processing` | Selecciona `image_processing`. Alias: `--removebg`, `--remove-bg`, `--image-processing`. |
+| `--rag` | Selecciona `rag_service` (embeddings + búsqueda). Alias: `--knowledge`, `--semantic-search`. |
 | `--swagger` | Selecciona el portal Swagger global (`gateway/`). Alias: `--docs`, `--gateway`, `--portal`. |
 | `--all` | Selecciona todo (equivale a no pasar flags). |
 | `--build` | Añade `--build` a `docker compose up` (reconstruye imágenes). |
@@ -63,6 +65,7 @@ puerto: re-ejecutar no mueve las URLs.
 | `image_generator` (Redis) | 6379 | 6379 | — |
 | `image_generator` (worker) | 9100 | 9100 | — |
 | `image_processing` | 8000 | 8102 | `IMAGE_PROCESSING_HOST_PORT` |
+| `rag_service` | 8000 | 8104 | `RAG_HOST_PORT` |
 | `swagger` (portal) | — (host) | 8080 | `SWAGGER_HOST_PORT` |
 
 > Los `81xx` están reservados para Paimon y evitan los `80xx` que usan otros

@@ -1,0 +1,21 @@
+# API HTTP
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# Persistencia: PostgreSQL (contenedor) o SQLite (desarrollo/tests)
+SQLAlchemy[asyncio]
+psycopg[binary]
+aiosqlite
+
+# HTTP (embeddings OpenAI-compatibles + reranker DeepSeek)
+httpx
+
+# Embeddings locales en CPU (modelo ONNX). Descarga perezosa y cacheada.
+fastembed
+
+# Extracción de documentos
+pypdf
+python-docx
+openpyxl

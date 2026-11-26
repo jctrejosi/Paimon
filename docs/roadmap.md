@@ -15,7 +15,7 @@ El listado completo y su descripción están en
 | 3 | Procesamiento de vídeo | `video_processing/` · `video_generation/` |
 | 4 | Reconocimiento y síntesis de voz | `speech_to_text/` · `text_to_speech/` → **síntesis planificada como `audio_generator/`** |
 | 5 | Procesamiento de documentos | `document_processing/` |
-| 6 | Búsqueda semántica | `semantic_search/` · `embeddings/` |
+| 6 | Búsqueda semántica | `rag_service/` (**implementado**: ingesta + embeddings + búsqueda) |
 | 7 | Procesamiento de texto con IA | `text_processing/` |
 | 8 | Visión artificial | `computer_vision/` |
 | 9 | Generación y procesamiento 3D | `three_d/` · `mesh_processing/` |
@@ -29,6 +29,7 @@ El listado completo y su descripción están en
 - [`../plans/audio_processing_pipeline.md`](../plans/audio_processing_pipeline.md) — pipeline de preprocesamiento (implementado).
 - [`../plans/audio_generator.md`](../plans/audio_generator.md) — API de síntesis y clonación de voz (en planificación; CosyVoice).
 - [`../plans/apps_future.md`](../plans/apps_future.md) — catálogo de ideas.
+- [`../rag_service/README.md`](../rag_service/README.md) — servicio RAG central (implementado).
 
 ## Cómo añadir un aplicativo
 

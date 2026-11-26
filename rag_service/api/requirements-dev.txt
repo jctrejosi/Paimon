@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Pruebas (httpx ya viene en requirements; ASGITransport no necesita red)
+pytest
+pytest-asyncio

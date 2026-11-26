@@ -39,4 +39,10 @@ server {
         proxy_pass http://127.0.0.1:${VOICE_PORT}/;
         include /etc/nginx/paimon-proxy.inc;
     }
+
+    # rag_service (embeddings + búsqueda semántica)
+    location /rag/ {
+        proxy_pass http://127.0.0.1:${RAG_PORT}/;
+        include /etc/nginx/paimon-proxy.inc;
+    }
 }

@@ -30,6 +30,7 @@
       { name: "audio_processing", url: "audio/openapi.json" },
       { name: "image_generator", url: "image/openapi.json" },
       { name: "audio_generator — texto→voz", url: "voice/openapi.json" },
+      { name: "rag_service — embeddings + búsqueda", url: "rag/openapi.json" },
     ];
 
     (async () => {
@@ -49,7 +50,7 @@
         document.getElementById("swagger-ui").innerHTML =
           '<div id="empty"><h2>Ninguna API responde</h2>' +
           "<p>Levanta los servicios con:</p>" +
-          "<p><code>node dev.js --audio --image --processing --voice</code></p>" +
+          "<p><code>node dev.js --audio --image --processing --voice --rag</code></p>" +
           "<p>y recarga esta página.</p></div>";
         return;
       }

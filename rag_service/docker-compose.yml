@@ -1,0 +1,68 @@
+name: paimon-rag
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: paimon-rag-db
+    environment:
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: rag
+      POSTGRES_DB: rag_db
+    volumes:
+      - rag-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d rag_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  rag:
+    # Claves de API compartidas: `.env` único en la raíz de Paimon.
+    env_file:
+      - ../.env
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PUID: "${PUID:-1001}"
+        PGID: "${PGID:-1001}"
+    image: paimon-rag:local
+    container_name: paimon-rag
+    # Solo en loopback: sin autenticación por defecto; no exponer a la red.
+    # 8104 queda reservado para este servicio.
+    ports:
+      - "127.0.0.1:${RAG_HOST_PORT:-8104}:8000"
+    user: "${PUID:-1001}:${PGID:-1001}"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOME: /tmp
+      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg://rag:rag@db:5432/rag_db}"
+      FASTEMBED_CACHE_DIR: /models
+      UPLOAD_DIR: /data/uploads
+      # Aislamiento por proyecto: schema de PostgreSQL (`rag_<proyecto>`).
+      DEFAULT_PROJECT: "${DEFAULT_PROJECT:-default}"
+      SCHEMA_PREFIX: "${SCHEMA_PREFIX:-rag_}"
+      # Proveedor de embeddings y modelo. `fastembed` es local-first (CPU).
+      EMBEDDING_PROVIDER: "${EMBEDDING_PROVIDER:-fastembed}"
+      EMBEDDING_MODEL: "${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}"
+      EMBEDDING_API_KEY: "${EMBEDDING_API_KEY:-}"
+      EMBEDDING_BASE_URL: "${EMBEDDING_BASE_URL:-https://api.openai.com/v1}"
+      # Reranking opcional.
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      DEEPSEEK_BASE_URL: "${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
+      DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-deepseek-chat}"
+      # Prefijo público cuando el edge lo publica en /rag.
+      RAG_ROOT_PATH: "${RAG_ROOT_PATH:-}"
+    volumes:
+      # Modelos de embeddings (volumen de datos, no se hornean).
+      - ./api/models:/models
+      # Archivos originales para el endpoint de descarga.
+      - rag-uploads:/data/uploads
+    restart: unless-stopped
+
+volumes:
+  rag-data:
+  rag-uploads:

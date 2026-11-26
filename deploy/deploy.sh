@@ -65,7 +65,7 @@ wait_healthy() {
   die "Timeout esperando $name (último: '${status:-desconocido}')"
 }
 
-for dir in audio_processing image_generator image_processing; do
+for dir in audio_processing image_generator image_processing rag_service; do
   APP="$ROOT/$dir"
   [[ -f "$APP/docker-compose.yml" ]] || die "Falta $APP/docker-compose.yml"
 
@@ -91,5 +91,6 @@ done
 wait_healthy paimon-audio-processing
 wait_healthy paimon-image-api
 wait_healthy paimon-image-processing
+wait_healthy paimon-rag
 
 log "Despliegue completado: $COMMIT"

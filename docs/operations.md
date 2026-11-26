@@ -13,6 +13,7 @@ típicos.
 | `image_generator` — Redis | `6379` |
 | `image_generator` — worker (métricas) | `9100` |
 | `image_processing` — API | `8102` |
+| `rag_service` — API | `8104` |
 | `swagger` — portal global | `8080` |
 
 Los `81xx` están reservados para las APIs de Paimon y evitan los `80xx` que usan
@@ -22,7 +23,7 @@ fijarlos a mano:
 
 ```bash
 AUDIO_HOST_PORT=8100 IMAGE_API_HOST_PORT=8101 \
-IMAGE_PROCESSING_HOST_PORT=8102 SWAGGER_HOST_PORT=8080 node dev.js
+IMAGE_PROCESSING_HOST_PORT=8102 RAG_HOST_PORT=8104 SWAGGER_HOST_PORT=8080 node dev.js
 ```
 
 Todo se publica en **loopback** (`127.0.0.1`): no queda expuesto a la red. ComfyUI y
@@ -31,7 +32,7 @@ con red del host pero escucha en `127.0.0.1:8080`.
 
 ## Autenticación (claves de API)
 
-Las tres APIs exigen una clave en **todas** las rutas salvo `/health`. La fuente
+Las APIs exigen una clave en **todas** las rutas salvo `/health`. La fuente
 principal es un único archivo `.env` en la raíz de Paimon:
 
 ```dotenv
@@ -59,7 +60,7 @@ porque cada cliente codifica la cabecera a su manera.
 |---|---|
 | `API_AUTH_REQUIRED=0` | Desactiva la comprobación (solo desarrollo local). |
 | `API_PUBLIC_DOCS=1` | Deja `/docs`, `/redoc` y `/openapi.json` sin clave. |
-| `AUDIO_ROOT_PATH=/audio`<br>`IMAGE_ROOT_PATH=/image`<br>`IMAGE_PROCESSING_ROOT_PATH=/processing` | Prefijo público en el edge: Swagger pide el esquema en `<prefijo>/openapi.json`. Vacío en local. |
+| `AUDIO_ROOT_PATH=/audio`<br>`IMAGE_ROOT_PATH=/image`<br>`IMAGE_PROCESSING_ROOT_PATH=/processing`<br>`RAG_ROOT_PATH=/rag` | Prefijo público en el edge: Swagger pide el esquema en `<prefijo>/openapi.json`. Vacío en local. |
 | `API_ALLOW_QUERY_TOKEN=1` | Acepta también `?token=` (solo `image_generator`, por SSE). |
 
 Si `API_AUTH_REQUIRED=1` y `API_KEYS` está vacío, las APIs responden `503` en
@@ -97,6 +98,7 @@ docker compose -f docker-compose.yml -f docker-compose.edge.yml up -d
 | `/image/*` | `image_generator` (API; ComfyUI y Redis quedan internos) |
 | `/processing/*` | `image_processing` (remove-bg) |
 | `/voice/*` | `audio_generator` (TTS) |
+| `/rag/*` | `rag_service` (embeddings + búsqueda) |
 
 ```bash
 curl -H 'X-API-Key: <clave>' https://paimon.jcti.xyz/audio/health
@@ -111,18 +113,21 @@ servidor.
 - **Contenedores**: `node dev.js --logs` o `cd <app> && docker compose logs -f`.
 - **Archivos de datos** generados por las apps no se versionan (ver `.gitignore`):
   `image_generator/api/outputs/`, `audio_processing/api/models/`,
-  `image_processing/api/models/`.
+  `image_processing/api/models/`, `rag_service/api/models/`.
 
 ## Build y datos persistentes
 
 - Imágenes: `paimon-audio-processing:local`, `paimon-comfyui:local`,
-  `paimon-image-api:local`, `paimon-image-processing:local`.
+  `paimon-image-api:local`, `paimon-image-processing:local`, `paimon-rag:local`.
 - Reconstruir: `node dev.js --build` o `docker compose up --build` en la app.
 - Pesos/modelos y salidas van en **volúmenes**, no en la imagen:
   - audio: `audio_processing/api/models/` → `/models` (Whisper, HF).
   - imágenes: `image_generator/ComfyUI/{models,input,output}` y
     `image_generator/api/outputs/`.
   - procesamiento: `image_processing/api/models/` → `/models` (rembg).
+  - RAG: `rag_service/api/models/` → `/models` (embeddings) y volumen
+    `rag-uploads` → `/data/uploads` (originales); PostgreSQL en `rag-data` con
+    un schema `rag_<proyecto>` aislado por proyecto.
 
 ## Healthchecks
 
@@ -130,6 +135,7 @@ servidor.
 - `image_generator`: la API en `/health`, ComfyUI en `/system_stats`, Redis con
   `redis-cli ping`. `api`/`worker` esperan (`depends_on … service_healthy`).
 - `image_processing`: la API responde en `GET /health`.
+- `rag_service`: la API en `GET /health` (incluye comprobación de PostgreSQL).
 
 ## Problemas típicos
 

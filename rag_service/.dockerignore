@@ -1,0 +1,28 @@
+# Entorno virtual local (no pertenece a la imagen)
+.venv/
+
+# Caché de modelos de embeddings (se monta como volumen)
+api/models/
+!api/models/.gitkeep
+
+# Archivos subidos (volumen de datos)
+api/uploads/
+
+# Bases SQLite locales por proyecto
+api/data/
+api/*.db
+
+# Configuración local (contiene credenciales)
+api/.env
+
+# Basura de Python
+**/__pycache__/
+**/*.pyc
+
+# Pruebas y cachés
+api/tests/
+.pytest_cache/
+.ruff_cache/
+
+# Logs
+*.log

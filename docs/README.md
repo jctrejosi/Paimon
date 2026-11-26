@@ -10,6 +10,7 @@ decisiones y roadmap) ver [`../plans/`](../plans/README.md).
 | [`apps/audio_processing.md`](apps/audio_processing.md) | App de transcripción y preprocesamiento de audio. |
 | [`apps/image_generator.md`](apps/image_generator.md) | App de generación y edición de imágenes. |
 | [`apps/image_processing.md`](apps/image_processing.md) | App de procesamiento de imágenes (quita-fondo). |
+| [`apps/rag_service.md`](apps/rag_service.md) | Servicio RAG: ingesta, embeddings y búsqueda semántica. |
 | [`apps/swagger.md`](apps/swagger.md) | Portal Swagger global (`gateway/`): todas las APIs en un solo origen. |
 | [`operations.md`](operations.md) | Operación común: puertos, tokens, logs, build y problemas típicos. |
 | [`roadmap.md`](roadmap.md) | Módulos previstos a futuro. |
@@ -33,6 +34,7 @@ node dev.js
 node dev.js --audio
 node dev.js --image
 node dev.js --processing
+node dev.js --rag
 node dev.js --swagger --processing
 ```
 

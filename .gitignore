@@ -47,6 +47,13 @@ image_processing/api/.env
 image_processing/api/models/*
 !image_processing/api/models/.gitkeep
 
+# Servicio RAG: modelo de embeddings (volumen) y archivos subidos
+rag_service/api/models/*
+!rag_service/api/models/.gitkeep
+rag_service/api/uploads/
+rag_service/api/data/
+rag_service/api/*.db
+
 # Repos externos clonados para revisión (no versionar)
 /reference/
 

@@ -6,12 +6,14 @@
  * Each app is a `docker compose` stack in its own folder, so this launcher
  * delegates to Compose (no venvs, no PIDs: Docker gestiona los contenedores).
  *
- *   node dev.js                 # levanta todo: audio + image + processing + swagger
+ *   node dev.js                 # levanta todo: audio + image + processing + voice + rag + swagger
  *   node dev.js --audio         # solo audio_processing
  *   node dev.js --image         # solo image_generator
  *   node dev.js --processing    # solo image_processing (alias: --removebg)
+ *   node dev.js --voice         # solo audio_generator (texto→voz)
+ *   node dev.js --rag           # solo rag_service (embeddings + búsqueda)
  *   node dev.js --swagger       # portal Swagger global (alias: --docs, --gateway)
- *   node dev.js --all           # explícito: los tres
+ *   node dev.js --all           # explícito: todas las apps
  *   node dev.js --build         # (re)construye las imágenes al levantar
  *   node dev.js --logs [flags]  # sigue los logs de los seleccionados (Ctrl+C sale)
  *   node dev.js --stop [flags]  # detiene los seleccionados (o todos)
@@ -105,6 +107,21 @@ const PROJECTS = [
     ],
   },
   {
+    name: "rag",
+    label: "rag_service",
+    dir: "rag_service",
+    container: "paimon-rag",
+    portEnv: "RAG_HOST_PORT",
+    port: 8104,
+    color: "\x1b[95m",
+    endpoints: (p) => [
+      ["API", `http://localhost:${p}`],
+      ["Swagger", `http://localhost:${p}/docs`],
+      ["OpenAPI", `http://localhost:${p}/openapi.json`],
+      ["search", `POST http://localhost:${p}/search`],
+    ],
+  },
+  {
     name: "swagger",
     label: "swagger global",
     dir: "gateway",
@@ -117,7 +134,7 @@ const PROJECTS = [
     color: "\x1b[33m",
     endpoints: (p) => [
       ["Swagger", `http://localhost:${p}`],
-      ["APIs", `http://localhost:${p}/  (audio, image, processing, voice)`],
+      ["APIs", `http://localhost:${p}/  (audio, image, processing, voice, rag)`],
     ],
   },
 ];
@@ -143,6 +160,13 @@ const PROJECT_ALIASES = {
   voice_generator: "voice",
   "audio-generator": "voice",
   audio_generator: "voice",
+  rag: "rag",
+  "rag-service": "rag",
+  rag_service: "rag",
+  knowledge: "rag",
+  "knowledge-service": "rag",
+  "semantic-search": "rag",
+  embeddings: "rag",
 };
 
 // Puertos fijos que no deben asignarse por reasignación automática.
@@ -322,6 +346,7 @@ const GATEWAY_TARGETS = {
   image: "IMAGE_PORT",
   processing: "PROCESSING_PORT",
   voice: "VOICE_PORT",
+  rag: "RAG_PORT",
 };
 
 /**
@@ -450,6 +475,7 @@ function printCommands() {
     ["node dev.js --removebg", "alias de --processing"],
     ["node dev.js --voice", "solo audio_generator (texto→voz)"],
     ["node dev.js --tts", "alias de --voice"],
+    ["node dev.js --rag", "solo rag_service (embeddings + búsqueda)"],
     ["node dev.js --swagger", "portal Swagger global (alias --docs, --gateway)"],
     ["node dev.js --all", "todo (apps + Swagger)"],
     ["node dev.js --build", "reconstruye las imágenes al levantar"],
@@ -476,6 +502,8 @@ function printHelp() {
   out.push("                       alias: --removebg, --remove-bg, --image-processing");
   out.push("  --voice            solo audio_generator    (API :8103, POST /synthesize)");
   out.push("                       alias: --tts, --text-to-speech, --audio-generator");
+  out.push("  --rag              solo rag_service        (API :8104, /search, /ingest)");
+  out.push("                       alias: --knowledge, --semantic-search, --embeddings");
   out.push("  --swagger          portal Swagger global   (UI :8080, todas las APIs)");
   out.push("                       alias: --docs, --gateway, --portal");
   out.push("  --all              todo (apps + Swagger)");
@@ -487,13 +515,14 @@ function printHelp() {
   out.push("  --help             esta ayuda");
   out.push("");
   out.push("PUERTOS");
-  out.push("  Cada API usa :8000 internamente. En el host se publican en 8100–8103");
+  out.push("  Cada API usa :8000 internamente. En el host se publican en 8100–8104");
   out.push("  (o el siguiente libre), saltando los ya ocupados.");
-  out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT, IMAGE_PROCESSING_HOST_PORT");
-  out.push("  y AUDIO_GEN_HOST_PORT.");
+  out.push("  Fijar con AUDIO_HOST_PORT, IMAGE_API_HOST_PORT, IMAGE_PROCESSING_HOST_PORT,");
+  out.push("  AUDIO_GEN_HOST_PORT y RAG_HOST_PORT.");
   out.push("");
   out.push("EJEMPLOS");
-  out.push("  node dev.js                    → audio + image + processing + voice + swagger");
+  out.push("  node dev.js                    → todas las apps + swagger");
+  out.push("  node dev.js --rag --swagger    → RAG + portal Swagger");
   out.push("  node dev.js --voice --swagger  → texto→voz + portal Swagger");
   out.push("  node dev.js --audio --build    → solo audio, reconstruyendo la imagen");
   out.push("  node dev.js --processing --swagger → quita-fondo + portal Swagger");
